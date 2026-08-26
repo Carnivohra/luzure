@@ -18,6 +18,7 @@ authors = ["Carnivohra <carnivohra@gmail.com>"]
 description = "A lightweight and modular MMO game engine focused on performance."
 license = "MIT OR Apache-2.0"
 readme = "README.md"
+repository = "https://github.com/Carnivohra/luzure"
 
 [workspace.dependencies]
 luzure = { path = "crates/luzure", version = "0.0.1" }
