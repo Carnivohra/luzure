@@ -1,0 +1,12 @@
+[package]
+name = "luzure-render"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+readme.workspace = true
+
+[dependencies]
+raw-window-handle.workspace = true
+thiserror.workspace = true

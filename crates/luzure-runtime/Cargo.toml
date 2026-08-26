@@ -1,0 +1,15 @@
+[package]
+name = "luzure-runtime"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+readme.workspace = true
+
+[dependencies]
+luzure-backend.workspace = true
+luzure-input.workspace = true
+luzure-render.workspace = true
+
+thiserror.workspace = true

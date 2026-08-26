@@ -1,0 +1,22 @@
+[package]
+name = "luzure"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+readme.workspace = true
+
+[features]
+default = ["wgpu", "winit"]
+wgpu = ["dep:luzure-wgpu"]
+winit = ["dep:luzure-winit"]
+
+[dependencies]
+luzure-app.workspace = true
+luzure-backend.workspace = true
+luzure-input.workspace = true
+luzure-render.workspace = true
+luzure-runtime.workspace = true
+luzure-wgpu = { workspace = true, optional = true }
+luzure-winit = { workspace = true, optional = true }

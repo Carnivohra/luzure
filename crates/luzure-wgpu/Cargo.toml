@@ -1,0 +1,16 @@
+[package]
+name = "luzure-wgpu"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+readme.workspace = true
+
+[dependencies]
+luzure-render.workspace = true
+
+pollster.workspace = true
+raw-window-handle.workspace = true
+thiserror.workspace = true
+wgpu.workspace = true

@@ -1,0 +1,36 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/luzure",
+    "crates/luzure-app",
+    "crates/luzure-backend",
+    "crates/luzure-input",
+    "crates/luzure-render",
+    "crates/luzure-runtime",
+    "crates/luzure-wgpu",
+    "crates/luzure-winit",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+authors = ["Carnivohra <carnivohra@gmail.com>"]
+description = "A lightweight and modular MMO game engine focused on performance."
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+
+[workspace.dependencies]
+luzure = { path = "crates/luzure", version = "0.0.1" }
+luzure-app = { path = "crates/luzure-app", version = "0.0.1" }
+luzure-backend = { path = "crates/luzure-backend", version = "0.0.1" }
+luzure-input = { path = "crates/luzure-input", version = "0.0.1" }
+luzure-render = { path = "crates/luzure-render", version = "0.0.1" }
+luzure-runtime = { path = "crates/luzure-runtime", version = "0.0.1" }
+luzure-wgpu = { path = "crates/luzure-wgpu", version = "0.0.1" }
+luzure-winit = { path = "crates/luzure-winit", version = "0.0.1" }
+
+raw-window-handle = "0.6.2"
+pollster = "1.0.1"
+thiserror = "2.0.20"
+wgpu = "30.0.1"
+winit = "0.30.13"

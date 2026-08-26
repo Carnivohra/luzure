@@ -1,0 +1,13 @@
+[package]
+name = "luzure-app"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+readme.workspace = true
+
+[dependencies]
+luzure-backend.workspace = true
+luzure-render.workspace = true
+luzure-runtime.workspace = true
