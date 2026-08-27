@@ -1,15 +1,15 @@
 use luzure_backend::{Window, backend::{BackendError, BackendHandle}, window::{WindowDescriptor, WindowId}};
-use winit::{dpi::PhysicalSize, event_loop::{ActiveEventLoop}, window::{WindowId as WinitWindowId, WindowAttributes}};
+use winit::{dpi::PhysicalSize, event_loop::{ActiveEventLoop}, window::WindowAttributes};
 
-use crate::window::WinitWindow;
+use crate::window::{WinitWindow, WinitWindowEntry};
 
 pub(super) struct WinitBackendHandle<'a> {
     event_loop: &'a ActiveEventLoop,
-    windows: &'a mut Vec<Option<WinitWindowId>>,
+    windows: &'a mut Vec<Option<WinitWindowEntry>>,
 }
 
 impl<'a> WinitBackendHandle<'a> {
-    pub(super) fn new(event_loop: &'a ActiveEventLoop, windows: &'a mut Vec<Option<WinitWindowId>>) -> Self {
+    pub(super) fn new(event_loop: &'a ActiveEventLoop, windows: &'a mut Vec<Option<WinitWindowEntry>>) -> Self {
         Self {
             event_loop,
             windows,
@@ -29,8 +29,9 @@ impl BackendHandle for WinitBackendHandle<'_> {
             .map_err(|_| BackendError::WindowCreation)?;
 
         let window_id = WindowId::new(self.windows.len() as u64);
-        self.windows.push(Some(window.id()));
+        self.windows.push(Some(WinitWindowEntry::new(window.id(), window_id)));
         let winit_window = WinitWindow::new(window);
+
         Ok(Window::new(window_id, Box::new(winit_window)))
     }
 
@@ -40,6 +41,7 @@ impl BackendHandle for WinitBackendHandle<'_> {
 
     fn exit(&mut self) -> Result<(), BackendError> {
         self.event_loop.exit();
+        
         Ok(())
     }
 }

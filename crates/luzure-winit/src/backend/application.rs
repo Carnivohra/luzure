@@ -1,11 +1,11 @@
-use luzure_backend::{backend::BackendApplication};
-use winit::{application::ApplicationHandler, event::WindowEvent, event_loop::ActiveEventLoop, window::WindowId as WinitWindowId};
+use luzure_backend::{backend::BackendApplication, window::WindowEvent};
+use winit::{application::ApplicationHandler, event::WindowEvent as WinitWindowEvent, event_loop::ActiveEventLoop, window::WindowId as WinitWindowId};
 
-use crate::backend::WinitBackendHandle;
+use crate::{backend::WinitBackendHandle, window::WinitWindowEntry};
 
 pub(super) struct WinitApplication<A: BackendApplication> {
     application: A,
-    windows: Vec<Option<WinitWindowId>>,
+    windows: Vec<Option<WinitWindowEntry>>,
     started: bool,
     error: Option<A::Error>,
 }
@@ -53,7 +53,25 @@ impl<A: BackendApplication> ApplicationHandler for WinitApplication<A> {
         }
     }
 
-    fn window_event(&mut self, _event_loop: &ActiveEventLoop, _window_id: WinitWindowId, _event: WindowEvent) {
-        todo!()
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, winit_window_id: WinitWindowId, winit_event: WinitWindowEvent) {
+        let Some(window_id) = self.windows.iter()
+            .flatten()
+            .find(|window| window.winit_id() == winit_window_id)
+            .map(WinitWindowEntry::window_id) else { return };
+
+        let event = match winit_event {
+            WinitWindowEvent::CloseRequested => WindowEvent::CloseRequested { window_id },
+            WinitWindowEvent::RedrawRequested => WindowEvent::RedrawRequested { window_id },
+            WinitWindowEvent::Resized(size) => WindowEvent::Resized { window_id, width: size.width, height: size.height },
+            WinitWindowEvent::Focused(focused) => WindowEvent::Focused { window_id, focuses: focused },
+            _ => return
+        };
+
+        let mut handle = WinitBackendHandle::new(event_loop, &mut self.windows);
+
+        if let Err(error) = self.application.window_event(&mut handle, event) {
+            self.error = Some(error);
+            event_loop.exit();
+        }
     }
 }

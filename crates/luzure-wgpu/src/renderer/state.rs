@@ -3,7 +3,7 @@ use wgpu::{Adapter, Device, Queue};
 pub(super) struct WgpuRendererState {
     adapter: Adapter,
     device: Device,
-    _queue: Queue,
+    queue: Queue,
 }
 
 impl WgpuRendererState {
@@ -11,7 +11,7 @@ impl WgpuRendererState {
         Self {
             adapter,
             device,
-            _queue: queue,
+            queue,
         }
     }
 
@@ -21,5 +21,9 @@ impl WgpuRendererState {
 
     pub(super) const fn device(&self) -> &Device {
         &self.device
+    }
+
+    pub(super) const fn queue(&self) -> &Queue {
+        &self.queue
     }
 }

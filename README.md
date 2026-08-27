@@ -1,6 +1,6 @@
 # Luzure
 
-Luzure is a lightweight MMO game engine written in Rust, with a strong focus
+Luzure is a lightweight game engine written in Rust, with a strong focus
 on performance, modularity, and minimal overhead.
 
 > [!NOTE]
@@ -12,7 +12,7 @@ on performance, modularity, and minimal overhead.
 - High performance with minimal runtime overhead
 - Clear separation between platform, rendering, and runtime systems
 - Extensible APIs for games and plugins
-- A scalable foundation for MMO worlds
+- A scalable foundation for games and worlds
 
 ## License
 

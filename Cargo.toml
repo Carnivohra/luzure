@@ -15,7 +15,7 @@ members = [
 version = "0.0.1"
 edition = "2024"
 authors = ["Carnivohra <carnivohra@gmail.com>"]
-description = "A lightweight and modular MMO game engine focused on performance."
+description = "A lightweight and modular game engine focused on performance."
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/Carnivohra/luzure"
@@ -30,7 +30,7 @@ luzure-runtime = { path = "crates/luzure-runtime", version = "0.0.1" }
 luzure-wgpu = { path = "crates/luzure-wgpu", version = "0.0.1" }
 luzure-winit = { path = "crates/luzure-winit", version = "0.0.1" }
 
-raw-window-handle = "0.6.2"
+raw-window-handle = { version = "0.6.2", features = ["alloc"] }
 pollster = "1.0.1"
 thiserror = "2.0.20"
 wgpu = "30.0.1"

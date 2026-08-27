@@ -4,7 +4,7 @@ use state::WgpuRendererState;
 
 use luzure_render::{render::RenderError, Renderer};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
-use wgpu::{DeviceDescriptor, Instance, InstanceDescriptor, RequestAdapterOptions};
+use wgpu::{Color, CommandEncoderDescriptor, CurrentSurfaceTexture, DeviceDescriptor, Instance, InstanceDescriptor, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, StoreOp, TextureViewDescriptor};
 
 use crate::WgpuSurface;
 
@@ -58,7 +58,33 @@ impl Renderer for WgpuRenderer {
         Ok(WgpuSurface::new(surface, config))
     }
 
-    fn render(&self, _surface: &Self::Surface) -> Result<(), RenderError> {
-        todo!()
+    fn render(&self, surface: &Self::Surface) -> Result<(), RenderError> {
+        let state = self.state.as_ref()
+            .ok_or(RenderError::DeviceRequest)?;
+
+        let frame = match surface.surface().get_current_texture() {
+            CurrentSurfaceTexture::Success(frame) | CurrentSurfaceTexture::Suboptimal(frame) => frame,
+            CurrentSurfaceTexture::Timeout | CurrentSurfaceTexture::Occluded => return Ok(()),
+            _ => return Err(RenderError::SurfaceAcquisition),
+        };
+
+        let view = frame.texture.create_view(&TextureViewDescriptor::default());
+        let mut encoder = state.device().create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("luzure-wgpu frame encoder"),
+        });
+
+        let pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            label: Some("luzure-wgpu clear pass"), color_attachments: &[Some(RenderPassColorAttachment {
+                view: &view, depth_slice: None, resolve_target: None, ops: Operations {
+                    load: LoadOp::Clear(Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }), store: StoreOp::Store
+                },
+            })], ..Default::default()
+        });
+
+        drop(pass);
+        state.queue().submit([encoder.finish()]);
+        state.queue().present(frame);
+
+        Ok(())
     }
 }
