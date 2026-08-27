@@ -4,18 +4,21 @@ mod id;
 mod source;
 
 pub use descriptor::WindowDescriptor;
-pub use event::WindowEvent;
+pub use event::{WindowEvent, WindowEventKind};
 pub use id::WindowId;
 use raw_window_handle::{DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, WindowHandle};
 pub use source::WindowSource;
 
+use std::sync::Arc;
+
+#[derive(Clone)]
 pub struct Window {
     id: WindowId,
-    source: Box<dyn WindowSource>,
+    source: Arc<dyn WindowSource>,
 }
 
 impl Window {
-    pub fn new<S: WindowSource + 'static>(id: WindowId, source: Box<S>) -> Self {
+    pub fn new<S: WindowSource + 'static>(id: WindowId, source: Arc<S>) -> Self {
         Self {
             id,
             source,

@@ -4,7 +4,7 @@ pub(crate) use entry::WinitWindowEntry;
 
 use luzure_backend::window::WindowSource;
 use raw_window_handle::{DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, WindowHandle};
-use winit::window::Window;
+use winit::window::{Window, WindowId};
 
 pub(crate) struct WinitWindow {
     window: Window,
@@ -13,6 +13,10 @@ pub(crate) struct WinitWindow {
 impl WinitWindow {
     pub(crate) const fn new(window: Window) -> Self {
         Self { window }
+    }
+
+    fn id(&self) -> WindowId {
+        self.window.id()
     }
 }
 

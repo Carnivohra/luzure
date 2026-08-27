@@ -796,6 +796,7 @@ name = "luzure-runtime"
 version = "0.0.1"
 dependencies = [
  "luzure-backend",
+ "luzure-ecs",
  "luzure-input",
  "luzure-render",
  "thiserror 2.0.20",

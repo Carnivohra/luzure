@@ -3,6 +3,8 @@ use winit::{dpi::PhysicalSize, event_loop::{ActiveEventLoop}, window::WindowAttr
 
 use crate::window::{WinitWindow, WinitWindowEntry};
 
+use std::sync::Arc;
+
 pub(super) struct WinitBackendHandle<'a> {
     event_loop: &'a ActiveEventLoop,
     windows: &'a mut Vec<Option<WinitWindowEntry>>,
@@ -28,15 +30,28 @@ impl BackendHandle for WinitBackendHandle<'_> {
         let window = self.event_loop.create_window(attributes)
             .map_err(|_| BackendError::WindowCreation)?;
 
+        let winit_window = Arc::new(WinitWindow::new(window));
         let window_id = WindowId::new(self.windows.len() as u64);
-        self.windows.push(Some(WinitWindowEntry::new(window.id(), window_id)));
-        let winit_window = WinitWindow::new(window);
 
-        Ok(Window::new(window_id, Box::new(winit_window)))
+        self.windows.push(Some(WinitWindowEntry::new(window_id, Arc::clone(&winit_window))));
+
+        Ok(Window::new(window_id, winit_window))
     }
 
-    fn destroy_window(&mut self, _window: Window) -> Result<(), BackendError> {
-        todo!()
+    fn destroy_window(&mut self, window_id: WindowId) -> Result<(), BackendError> {
+        let index = usize::try_from(window_id.value())
+            .map_err(|_| BackendError::InvalidWindow)?;
+
+        let window = self.windows.get_mut(index)
+            .ok_or(BackendError::InvalidWindow)?;
+
+        if window.as_ref().is_none_or(|window| window.window_id() != window_id) {
+            return Err(BackendError::InvalidWindow);
+        }
+
+        window.take();
+
+        Ok(())
     }
 
     fn exit(&mut self) -> Result<(), BackendError> {

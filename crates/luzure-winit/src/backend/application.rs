@@ -1,4 +1,4 @@
-use luzure_backend::{backend::BackendApplication, window::WindowEvent};
+use luzure_backend::{backend::BackendApplication, window::{WindowEvent, WindowEventKind}};
 use winit::{application::ApplicationHandler, event::WindowEvent as WinitWindowEvent, event_loop::ActiveEventLoop, window::WindowId as WinitWindowId};
 
 use crate::{backend::WinitBackendHandle, window::WinitWindowEntry};
@@ -59,13 +59,15 @@ impl<A: BackendApplication> ApplicationHandler for WinitApplication<A> {
             .find(|window| window.winit_id() == winit_window_id)
             .map(WinitWindowEntry::window_id) else { return };
 
-        let event = match winit_event {
-            WinitWindowEvent::CloseRequested => WindowEvent::CloseRequested { window_id },
-            WinitWindowEvent::RedrawRequested => WindowEvent::RedrawRequested { window_id },
-            WinitWindowEvent::Resized(size) => WindowEvent::Resized { window_id, width: size.width, height: size.height },
-            WinitWindowEvent::Focused(focused) => WindowEvent::Focused { window_id, focuses: focused },
+        let kind = match winit_event {
+            WinitWindowEvent::CloseRequested => WindowEventKind::CloseRequested,
+            WinitWindowEvent::RedrawRequested => WindowEventKind::RedrawRequested,
+            WinitWindowEvent::Resized(size) => WindowEventKind::Resized { width: size.width, height: size.height },
+            WinitWindowEvent::Focused(focused) => WindowEventKind::Focused { focused },
             _ => return
         };
+
+        let event = WindowEvent { window_id, kind };
 
         let mut handle = WinitBackendHandle::new(event_loop, &mut self.windows);
 
