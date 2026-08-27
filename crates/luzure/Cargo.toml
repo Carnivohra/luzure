@@ -16,6 +16,7 @@ winit = ["dep:luzure-winit"]
 [dependencies]
 luzure-app.workspace = true
 luzure-backend.workspace = true
+luzure-ecs.workspace = true
 luzure-input.workspace = true
 luzure-render.workspace = true
 luzure-runtime.workspace = true

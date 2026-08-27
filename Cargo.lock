@@ -746,6 +746,7 @@ version = "0.0.1"
 dependencies = [
  "luzure-app",
  "luzure-backend",
+ "luzure-ecs",
  "luzure-input",
  "luzure-render",
  "luzure-runtime",
@@ -768,6 +769,13 @@ version = "0.0.1"
 dependencies = [
  "luzure-input",
  "raw-window-handle",
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "luzure-ecs"
+version = "0.0.1"
+dependencies = [
  "thiserror 2.0.20",
 ]
 

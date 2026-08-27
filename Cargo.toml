@@ -4,6 +4,7 @@ members = [
     "crates/luzure",
     "crates/luzure-app",
     "crates/luzure-backend",
+    "crates/luzure-ecs",
     "crates/luzure-input",
     "crates/luzure-render",
     "crates/luzure-runtime",
@@ -24,6 +25,7 @@ repository = "https://github.com/Carnivohra/luzure"
 luzure = { path = "crates/luzure", version = "0.0.1" }
 luzure-app = { path = "crates/luzure-app", version = "0.0.1" }
 luzure-backend = { path = "crates/luzure-backend", version = "0.0.1" }
+luzure-ecs = { path = "crates/luzure-ecs", version = "0.0.1" }
 luzure-input = { path = "crates/luzure-input", version = "0.0.1" }
 luzure-render = { path = "crates/luzure-render", version = "0.0.1" }
 luzure-runtime = { path = "crates/luzure-runtime", version = "0.0.1" }
