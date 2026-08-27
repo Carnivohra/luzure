@@ -5,15 +5,17 @@ use std::collections::HashMap;
 
 use crate::window::WindowState;
 
-pub struct WindowManager {
+pub struct WindowManager<S> {
     entities: HashMap<WindowId, Entity>,
+    surfaces: HashMap<WindowId, S>,
     window_ids: HashMap<Entity, WindowId>,
 }
 
-impl WindowManager {
+impl<S> WindowManager<S> {
     pub fn new() -> Self {
         Self {
             entities: HashMap::new(),
+            surfaces: HashMap::new(),
             window_ids: HashMap::new(),
         }
     }
@@ -26,11 +28,11 @@ impl WindowManager {
         self.window_ids.get(&entity).copied()
     }
 
-    pub fn set_title(&self, registry: &mut Registry, entity: Entity, title: &str) -> bool {
-        if self.window_id(entity).is_none() {
-            return false;
-        }
+    pub(crate) fn surface(&self, window_id: WindowId) -> Option<&S> {
+        self.surfaces.get(&window_id)
+    }
 
+    pub fn set_title(&self, registry: &mut Registry, entity: Entity, title: &str) -> bool {
         let Some(window) = registry.get::<Window>(entity).cloned() else {
             return false;
         };
@@ -45,11 +47,12 @@ impl WindowManager {
         true
     }
 
-    pub(crate) fn add(&mut self, window_id: WindowId, entity: Entity) {
+    pub(crate) fn add(&mut self, window_id: WindowId, entity: Entity, surface: S) {
         debug_assert!(!self.entities.contains_key(&window_id));
         debug_assert!(!self.window_ids.contains_key(&entity));
 
         self.entities.insert(window_id, entity);
+        self.surfaces.insert(window_id, surface);
         self.window_ids.insert(entity, window_id);
     }
 

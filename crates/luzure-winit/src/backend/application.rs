@@ -76,4 +76,10 @@ impl<A: BackendApplication> ApplicationHandler for WinitApplication<A> {
             event_loop.exit();
         }
     }
+
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        for window in self.windows.iter().flatten() {
+            window.request_redraw();
+        }
+    }
 }
