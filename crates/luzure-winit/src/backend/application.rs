@@ -89,7 +89,7 @@ impl<A: BackendApplication> ApplicationHandler for WinitApplication<A> {
 
         let mut handle = WinitBackendHandle::new(event_loop, &mut self.windows);
 
-        if let Err(error) = self.application.about_to_wait(&mut handle) {
+        if let Err(error) = self.application.update(&mut handle) {
             self.error = Some(error);
             return event_loop.exit();
         }

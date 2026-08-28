@@ -53,7 +53,7 @@ impl<R: Renderer> BackendApplication for Engine<R> {
         Ok(())
     }
 
-    fn about_to_wait<H: BackendHandle>(&mut self, _handle: &mut H) -> Result<(), Self::Error> {
+    fn update<H: BackendHandle>(&mut self, _handle: &mut H) -> Result<(), Self::Error> {
         self.tick()
     }
 
