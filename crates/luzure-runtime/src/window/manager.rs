@@ -1,9 +1,10 @@
-use luzure_backend::{Window, window::{WindowEvent, WindowEventKind, WindowId}};
+use luzure_backend::{Window, backend::BackendHandle, window::{WindowDescriptor, WindowEvent, WindowEventKind, WindowId}};
 use luzure_ecs::{Entity, Registry};
+use luzure_render::Renderer;
 
 use std::collections::HashMap;
 
-use crate::window::WindowState;
+use crate::{runtime::RuntimeError, window::WindowState};
 
 pub struct WindowManager<S> {
     entities: HashMap<WindowId, Entity>,
@@ -26,6 +27,30 @@ impl<S> WindowManager<S> {
 
     pub fn window_id(&self, entity: Entity) -> Option<WindowId> {
         self.window_ids.get(&entity).copied()
+    }
+
+    pub(crate) fn create<R: Renderer<Surface = S>, H: BackendHandle>(&mut self, registry: &mut Registry, renderer: &mut R, handle: &mut H, descriptor: WindowDescriptor)
+        -> Result<Entity, RuntimeError>
+    {
+        let window = handle.create_window(descriptor.clone())?;
+        let window_id = window.id();
+        let (width, height) = window.inner_size();
+        let entity = registry.spawn_empty();
+        let surface = renderer.create_surface(window.clone(), (width, height))?;
+
+        registry.insert(entity, window)?;
+        registry.insert(entity, WindowState::new(descriptor, width, height))?;
+        self.add(window_id, entity, surface);
+
+        Ok(entity)
+    }
+
+    pub(crate) fn request_redraws(&self, registry: &Registry) {
+        for entity in self.entities.values() {
+            if let Some(window) = registry.get::<Window>(*entity) {
+                window.request_redraw();
+            }
+        }
     }
 
     pub(crate) fn surface(&self, window_id: WindowId) -> Option<&S> {

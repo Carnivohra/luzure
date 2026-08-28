@@ -7,6 +7,7 @@ pub(super) struct WinitApplication<A: BackendApplication> {
     application: A,
     windows: Vec<Option<WinitWindowEntry>>,
     started: bool,
+    resumed: bool,
     error: Option<A::Error>,
 }
 
@@ -16,6 +17,7 @@ impl<A: BackendApplication> WinitApplication<A> {
             application,
             windows: vec![],
             started: false,
+            resumed: false,
             error: None,
         }
     }
@@ -40,11 +42,14 @@ impl<A: BackendApplication> ApplicationHandler for WinitApplication<A> {
 
         if let Err(error) = self.application.resumed(&mut handle) {
             self.error = Some(error);
-            event_loop.exit();
+            return event_loop.exit();
         }
+
+        self.resumed = true;
     }
 
     fn suspended(&mut self, event_loop: &ActiveEventLoop) {
+        self.resumed = false;
         let mut handle = WinitBackendHandle::new(event_loop, &mut self.windows);
 
         if let Err(error) = self.application.suspended(&mut handle) {
@@ -77,9 +82,16 @@ impl<A: BackendApplication> ApplicationHandler for WinitApplication<A> {
         }
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        for window in self.windows.iter().flatten() {
-            window.request_redraw();
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        if !self.resumed {
+            return;
+        }
+
+        let mut handle = WinitBackendHandle::new(event_loop, &mut self.windows);
+
+        if let Err(error) = self.application.about_to_wait(&mut handle) {
+            self.error = Some(error);
+            return event_loop.exit();
         }
     }
 }

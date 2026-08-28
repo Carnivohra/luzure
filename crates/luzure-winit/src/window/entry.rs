@@ -1,4 +1,4 @@
-use luzure_backend::window::{WindowId, WindowSource};
+use luzure_backend::window::WindowId;
 use winit::window::WindowId as WinitWindowId;
 
 use std::sync::Arc;
@@ -24,9 +24,5 @@ impl WinitWindowEntry {
 
     pub(crate) const fn window_id(&self) -> WindowId {
         self.window_id
-    }
-
-    pub(crate) fn request_redraw(&self) {
-        self.window.request_redraw();
     }
 }
