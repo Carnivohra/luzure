@@ -1,5 +1,5 @@
 [package]
-name = "luzure-app"
+name = "luzure-game"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -9,7 +9,3 @@ readme.workspace = true
 repository.workspace = true
 
 [dependencies]
-luzure-backend.workspace = true
-luzure-game.workspace = true
-luzure-render.workspace = true
-luzure-runtime.workspace = true

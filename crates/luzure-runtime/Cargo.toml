@@ -11,6 +11,7 @@ repository.workspace = true
 [dependencies]
 luzure-backend.workspace = true
 luzure-ecs.workspace = true
+luzure-game.workspace = true
 luzure-input.workspace = true
 luzure-render.workspace = true
 

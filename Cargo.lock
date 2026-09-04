@@ -747,6 +747,7 @@ dependencies = [
  "luzure-app",
  "luzure-backend",
  "luzure-ecs",
+ "luzure-game",
  "luzure-input",
  "luzure-render",
  "luzure-runtime",
@@ -759,6 +760,7 @@ name = "luzure-app"
 version = "0.0.1"
 dependencies = [
  "luzure-backend",
+ "luzure-game",
  "luzure-render",
  "luzure-runtime",
 ]
@@ -780,6 +782,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "luzure-game"
+version = "0.0.1"
+
+[[package]]
 name = "luzure-input"
 version = "0.0.1"
 
@@ -797,6 +803,7 @@ version = "0.0.1"
 dependencies = [
  "luzure-backend",
  "luzure-ecs",
+ "luzure-game",
  "luzure-input",
  "luzure-render",
  "thiserror 2.0.20",

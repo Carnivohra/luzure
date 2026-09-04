@@ -1,22 +1,25 @@
 use luzure_backend::{backend::{BackendApplication, BackendHandle}, input::InputEvent, window::{WindowDescriptor, WindowEvent, WindowEventKind}};
 use luzure_ecs::{Entity, Registry};
+use luzure_game::Game;
 use luzure_input::input::InputState;
 use luzure_render::Renderer;
 
 use crate::{runtime::RuntimeError, window::WindowManager};
 
-pub struct Engine<R: Renderer> {
+pub struct Engine<R: Renderer, G: Game> {
     renderer: R,
+    _game: G,
     _input_state: InputState,
     registry: Registry,
     windows: WindowManager<R::Surface>,
     primary_window: Option<Entity>,
 }
 
-impl<R: Renderer> Engine<R> {
-    pub fn new(renderer: R) -> Self {
+impl<R: Renderer, G: Game> Engine<R, G> {
+    pub fn new(renderer: R, _game: G) -> Self {
         Self {
             renderer,
+            _game,
             _input_state: InputState::default(),
             registry: Registry::new(),
             windows: WindowManager::new(),
@@ -36,9 +39,15 @@ impl<R: Renderer> Engine<R> {
 
         Ok(())
     }
+
+    fn stop<H: BackendHandle>(&mut self, _handle: &mut H) -> Result<(), RuntimeError> {
+        self.primary_window = None;
+
+        Ok(())
+    }
 }
 
-impl<R: Renderer> BackendApplication for Engine<R> {
+impl<R: Renderer, G: Game> BackendApplication for Engine<R, G> {
     type Error = RuntimeError;
 
     fn started<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), Self::Error> {
@@ -73,5 +82,9 @@ impl<R: Renderer> BackendApplication for Engine<R> {
         }
 
         Ok(())
+    }
+
+    fn stopped<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), Self::Error> {
+        self.stop(handle)
     }
 }

@@ -11,4 +11,5 @@ pub trait BackendApplication {
     fn update<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), Self::Error>;
     fn input_event(&mut self, event: InputEvent);
     fn window_event<H: BackendHandle>(&mut self, handle: &mut H, event: WindowEvent) -> Result<(), Self::Error>;
+    fn stopped<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), Self::Error>;
 }
