@@ -81,6 +81,12 @@ impl<R: Renderer, G: Game> BackendApplication for Engine<R, G> {
     {
         self.windows.synchronize(&mut self.registry, event);
 
+        if let WindowEventKind::Resized { width, height } = event.kind {
+            if let Some(surface) = self.windows.surface_mut(event.window_id) {
+                self.renderer.resize_surface(surface, (width, height))?;
+            }
+        }
+
         if let WindowEventKind::RedrawRequested = event.kind {
             if let Some(surface) = self.windows.surface(event.window_id) {
                 self.renderer.render(surface)?;

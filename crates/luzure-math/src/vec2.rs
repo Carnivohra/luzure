@@ -21,6 +21,26 @@ impl Vec2 {
     pub const fn splat(value: f32) -> Self {
         Self::new(value, value)
     }
+
+    #[inline]
+    pub const fn dot(self, right: Self) -> f32 {
+        self.x * right.x + self.y * right.y
+    }
+
+    #[inline]
+    pub const fn length_squared(self) -> f32 {
+        self.dot(self)
+    }
+
+    #[inline]
+    pub fn length(self) -> f32 {
+        self.length_squared().sqrt()
+    }
+
+    #[inline]
+    pub fn normalize(self) -> Self {
+        self * self.length().recip()
+    }
 }
 
 impl Add for Vec2 {

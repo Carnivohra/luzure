@@ -26,6 +26,35 @@ impl Vec3 {
     pub const fn splat(value: f32) -> Self {
         Self::new(value, value, value)
     }
+
+    #[inline]
+    pub const fn dot(self, right: Self) -> f32 {
+        self.x * right.x + self.y * right.y + self.z * right.z
+    }
+
+    #[inline]
+    pub const fn cross(self, right: Self) -> Self {
+        Self::new(
+            self.y * right.z - self.z * right.y,
+            self.z * right.x - self.x * right.z,
+            self.x * right.y - self.y * right.x,
+        )
+    }
+
+    #[inline]
+    pub const fn length_squared(self) -> f32 {
+        self.dot(self)
+    }
+
+    #[inline]
+    pub fn length(self) -> f32 {
+        self.length_squared().sqrt()
+    }
+
+    #[inline]
+    pub fn normalize(self) -> Self {
+        self * self.length().recip()
+    }
 }
 
 impl Add for Vec3 {

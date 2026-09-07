@@ -58,6 +58,21 @@ impl Renderer for WgpuRenderer {
         Ok(WgpuSurface::new(surface, config))
     }
 
+    fn resize_surface(&mut self, surface: &mut Self::Surface, size: (u32, u32))
+        -> Result<(), RenderError>
+    {
+        if size.0 == 0 || size.1 == 0 {
+            return Ok(());
+        }
+
+        let state = self.state.as_ref()
+            .ok_or(RenderError::DeviceRequest)?;
+
+        surface.resize(state.device(), size);
+
+        Ok(())
+    }
+
     fn render(&self, surface: &Self::Surface) -> Result<(), RenderError> {
         let state = self.state.as_ref()
             .ok_or(RenderError::DeviceRequest)?;

@@ -76,6 +76,10 @@ impl<S> WindowManager<S> {
         self.surfaces.get(&window_id)
     }
 
+    pub(crate) fn surface_mut(&mut self, window_id: WindowId) -> Option<&mut S> {
+        self.surfaces.get_mut(&window_id)
+    }
+
     pub fn set_title(&self, registry: &mut Registry, entity: Entity, title: &str) -> bool {
         let Some(window) = registry.get::<Window>(entity).cloned() else {
             return false;
