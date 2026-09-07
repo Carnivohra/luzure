@@ -8,7 +8,7 @@ use crate::{runtime::RuntimeError, window::WindowManager};
 
 pub struct Engine<R: Renderer, G: Game> {
     renderer: R,
-    _game: G,
+    game: G,
     _input_state: InputState,
     registry: Registry,
     windows: WindowManager<R::Surface>,
@@ -16,10 +16,10 @@ pub struct Engine<R: Renderer, G: Game> {
 }
 
 impl<R: Renderer, G: Game> Engine<R, G> {
-    pub fn new(renderer: R, _game: G) -> Self {
+    pub fn new(renderer: R, game: G) -> Self {
         Self {
             renderer,
-            _game,
+            game,
             _input_state: InputState::default(),
             registry: Registry::new(),
             windows: WindowManager::new(),
@@ -28,7 +28,12 @@ impl<R: Renderer, G: Game> Engine<R, G> {
     }
 
     fn start<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), RuntimeError> {
-        let entity = self.windows.create(&mut self.registry, &mut self.renderer, handle, WindowDescriptor::default())?;
+        let descriptor = WindowDescriptor {
+            title: self.game.metadata().title.to_owned(),
+            ..Default::default()
+        };
+
+        let entity = self.windows.create(&mut self.registry, &mut self.renderer, handle, descriptor)?;
         self.primary_window = Some(entity);
 
         Ok(())
