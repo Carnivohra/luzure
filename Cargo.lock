@@ -749,6 +749,7 @@ dependencies = [
  "luzure-ecs",
  "luzure-game",
  "luzure-input",
+ "luzure-math",
  "luzure-render",
  "luzure-runtime",
  "luzure-wgpu",
@@ -787,6 +788,10 @@ version = "0.0.1"
 
 [[package]]
 name = "luzure-input"
+version = "0.0.1"
+
+[[package]]
+name = "luzure-math"
 version = "0.0.1"
 
 [[package]]

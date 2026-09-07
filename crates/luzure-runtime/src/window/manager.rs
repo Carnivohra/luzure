@@ -45,6 +45,25 @@ impl<S> WindowManager<S> {
         Ok(entity)
     }
 
+    pub(crate) fn destroy_all<H: BackendHandle>(&mut self, registry: &mut Registry, handle: &mut H)
+        -> Result<(), RuntimeError>
+    {
+        let window_ids: Vec<WindowId> = self.entities.keys().copied().collect();
+
+        for window_id in window_ids {
+            self.surfaces.remove(&window_id);
+
+            if let Some(entity) = self.entities.remove(&window_id) {
+                self.window_ids.remove(&entity);
+                registry.despawn(entity);
+            }
+
+            handle.destroy_window(window_id)?;
+        }
+
+        Ok(())
+    }
+
     pub(crate) fn request_redraws(&self, registry: &Registry) {
         for entity in self.entities.values() {
             if let Some(window) = registry.get::<Window>(*entity) {

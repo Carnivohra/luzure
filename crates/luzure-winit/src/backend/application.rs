@@ -94,4 +94,21 @@ impl<A: BackendApplication> ApplicationHandler for WinitApplication<A> {
             return event_loop.exit();
         }
     }
+
+    fn exiting(&mut self, event_loop: &ActiveEventLoop) {
+        if !self.started {
+            return;
+        }
+
+        self.started = false;
+        self.resumed = false;
+
+        let mut handle = WinitBackendHandle::new(event_loop, &mut self.windows);
+
+        if let Err(error) = self.application.stopped(&mut handle) {
+            if self.error.is_none() {
+                self.error = Some(error);
+            }
+        }
+    }
 }

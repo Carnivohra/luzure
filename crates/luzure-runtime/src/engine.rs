@@ -45,8 +45,9 @@ impl<R: Renderer, G: Game> Engine<R, G> {
         Ok(())
     }
 
-    fn stop<H: BackendHandle>(&mut self, _handle: &mut H) -> Result<(), RuntimeError> {
+    fn stop<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), RuntimeError> {
         self.primary_window = None;
+        self.windows.destroy_all(&mut self.registry, handle)?;
 
         Ok(())
     }

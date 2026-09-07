@@ -7,6 +7,7 @@ members = [
     "crates/luzure-ecs",
     "crates/luzure-game",
     "crates/luzure-input",
+    "crates/luzure-math",
     "crates/luzure-render",
     "crates/luzure-runtime",
     "crates/luzure-wgpu",
@@ -29,6 +30,7 @@ luzure-backend = { path = "crates/luzure-backend", version = "0.0.1" }
 luzure-ecs = { path = "crates/luzure-ecs", version = "0.0.1" }
 luzure-game = { path = "crates/luzure-game", version = "0.0.1" }
 luzure-input = { path = "crates/luzure-input", version = "0.0.1" }
+luzure-math = { path = "crates/luzure-math", version = "0.0.1" }
 luzure-render = { path = "crates/luzure-render", version = "0.0.1" }
 luzure-runtime = { path = "crates/luzure-runtime", version = "0.0.1" }
 luzure-wgpu = { path = "crates/luzure-wgpu", version = "0.0.1" }
