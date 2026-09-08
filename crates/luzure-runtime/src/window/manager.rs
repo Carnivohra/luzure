@@ -35,10 +35,9 @@ impl<S> WindowManager<S> {
         let window = handle.create_window(descriptor.clone())?;
         let window_id = window.id();
         let (width, height) = window.inner_size();
-        let entity = registry.spawn_empty();
         let surface = renderer.create_surface(window.clone(), (width, height))?;
+        let entity = registry.spawn(window);
 
-        registry.insert(entity, window)?;
         registry.insert(entity, WindowState::new(descriptor, width, height))?;
         self.add(window_id, entity, surface);
 

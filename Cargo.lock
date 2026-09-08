@@ -812,6 +812,7 @@ dependencies = [
  "luzure-game",
  "luzure-input",
  "luzure-render",
+ "luzure-world",
  "thiserror 2.0.20",
 ]
 
@@ -840,6 +841,10 @@ dependencies = [
 [[package]]
 name = "luzure-world"
 version = "0.0.1"
+dependencies = [
+ "luzure-ecs",
+ "luzure-math",
+]
 
 [[package]]
 name = "memchr"

@@ -62,6 +62,14 @@ impl Registry {
             .is_some_and(|storage| storage.contains(entity))
     }
 
+    pub fn spawn<T: Send + Sync + 'static>(&mut self, component: T) -> Entity {
+        let entity = self.entities.allocate();
+        let replaced = self.storage_mut_or_register::<T>().insert(entity, component);
+
+        debug_assert!(replaced.is_none());
+        entity
+    }
+
     pub fn spawn_empty(&mut self) -> Entity {
         self.entities.allocate()
     }
