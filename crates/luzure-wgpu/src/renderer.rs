@@ -2,7 +2,7 @@ mod state;
 
 use state::WgpuRendererState;
 
-use luzure_render::{render::RenderError, Renderer};
+use luzure_render::{render::{RenderError, RenderFrame}, Renderer};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 use wgpu::{Color, CommandEncoderDescriptor, CurrentSurfaceTexture, DeviceDescriptor, Instance, InstanceDescriptor, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, StoreOp, TextureViewDescriptor};
 
@@ -74,7 +74,7 @@ impl Renderer for WgpuRenderer {
         Ok(())
     }
 
-    fn render(&self, surface: &Self::Surface) -> Result<(), RenderError> {
+    fn render(&self, surface: &Self::Surface, render_frame: &RenderFrame) -> Result<(), RenderError> {
         let state = self.state.as_ref()
             .ok_or(RenderError::DeviceRequest)?;
 
@@ -86,6 +86,8 @@ impl Renderer for WgpuRenderer {
             CurrentSurfaceTexture::Timeout | CurrentSurfaceTexture::Occluded => return Ok(()),
             _ => return Err(RenderError::SurfaceAcquisition),
         };
+
+        state.update_camera(render_frame.camera());
 
         let view = frame.texture.create_view(&TextureViewDescriptor::default());
         let mut encoder = state.device().create_command_encoder(&CommandEncoderDescriptor {
@@ -101,6 +103,7 @@ impl Renderer for WgpuRenderer {
         });
 
         pass.set_pipeline(pipeline.pipeline());
+        pass.set_bind_group(0, state.camera().bind_group(), &[]);
         drop(pass);
         state.queue().submit([encoder.finish()]);
         state.queue().present(frame);

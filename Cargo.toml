@@ -12,6 +12,7 @@ members = [
     "crates/luzure-runtime",
     "crates/luzure-wgpu",
     "crates/luzure-winit",
+    "crates/luzure-world",
 ]
 
 [workspace.package]
@@ -35,6 +36,7 @@ luzure-render = { path = "crates/luzure-render", version = "0.0.1" }
 luzure-runtime = { path = "crates/luzure-runtime", version = "0.0.1" }
 luzure-wgpu = { path = "crates/luzure-wgpu", version = "0.0.1" }
 luzure-winit = { path = "crates/luzure-winit", version = "0.0.1" }
+luzure-world = { path = "crates/luzure-world", version = "0.0.1" }
 
 bytemuck = { version = "1.25.2", features = ["derive"] }
 raw-window-handle = { version = "0.6.2", features = ["alloc"] }

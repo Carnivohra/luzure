@@ -1,9 +1,11 @@
 use crate::{WgpuCamera, WgpuPipeline};
 
+use luzure_render::Camera;
 use wgpu::{Adapter, BindGroupLayout, Device, Queue, TextureFormat};
 
 pub(super) struct WgpuRendererState {
     adapter: Adapter,
+    camera: WgpuCamera,
     camera_bind_group_layout: BindGroupLayout,
     device: Device,
     pipelines: Vec<(TextureFormat, WgpuPipeline)>,
@@ -13,9 +15,11 @@ pub(super) struct WgpuRendererState {
 impl WgpuRendererState {
     pub(super) fn new(adapter: Adapter, device: Device, queue: Queue) -> Self {
         let camera_bind_group_layout = WgpuCamera::create_bind_group_layout(&device);
+        let camera = WgpuCamera::new(&device, &camera_bind_group_layout, &Camera::IDENTITY);
 
         Self {
             adapter,
+            camera,
             camera_bind_group_layout,
             device,
             pipelines: Vec::new(),
@@ -25,6 +29,14 @@ impl WgpuRendererState {
 
     pub(super) const fn adapter(&self) -> &Adapter {
         &self.adapter
+    }
+
+    pub(super) const fn camera(&self) -> &WgpuCamera {
+        &self.camera
+    }
+
+    pub(super) fn update_camera(&self, camera: &Camera) {
+        self.camera.update(&self.queue, camera);
     }
 
     pub(super) fn ensure_pipeline(&mut self, surface_format: TextureFormat) {

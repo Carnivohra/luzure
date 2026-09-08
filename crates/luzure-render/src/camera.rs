@@ -7,6 +7,7 @@ pub struct Camera {
 }
 
 impl Camera {
+    pub const IDENTITY: Self = Self::new(Mat4::IDENTITY, Mat4::IDENTITY);
     pub const fn new(view: Mat4, projection: Mat4) -> Self {
         Self {
             view,

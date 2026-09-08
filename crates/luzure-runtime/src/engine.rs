@@ -2,13 +2,14 @@ use luzure_backend::{backend::{BackendApplication, BackendHandle}, input::InputE
 use luzure_ecs::{Entity, Registry};
 use luzure_game::Game;
 use luzure_input::input::InputState;
-use luzure_render::Renderer;
+use luzure_render::{Camera, RenderFrame, Renderer};
 
 use crate::{runtime::RuntimeError, window::WindowManager};
 
 pub struct Engine<R: Renderer, G: Game> {
     renderer: R,
     game: G,
+    render_camera: Camera,
     _input_state: InputState,
     registry: Registry,
     windows: WindowManager<R::Surface>,
@@ -20,6 +21,7 @@ impl<R: Renderer, G: Game> Engine<R, G> {
         Self {
             renderer,
             game,
+            render_camera: Camera::IDENTITY,
             _input_state: InputState::default(),
             registry: Registry::new(),
             windows: WindowManager::new(),
@@ -89,7 +91,8 @@ impl<R: Renderer, G: Game> BackendApplication for Engine<R, G> {
 
         if let WindowEventKind::RedrawRequested = event.kind {
             if let Some(surface) = self.windows.surface(event.window_id) {
-                self.renderer.render(surface)?;
+                let frame = RenderFrame::new(&self.render_camera);
+                self.renderer.render(surface, &frame)?;
             }
         }
 
