@@ -11,6 +11,9 @@ pub enum RenderError {
     #[error("render surface dimensions must be greater than zero")]
     InvalidSurfaceSize,
     
+    #[error("render pipeline is not available for the surface format")]
+    PipelineUnavailable,
+
     #[error("failed to acquire render surface texture")]
     SurfaceAcquisition,
 

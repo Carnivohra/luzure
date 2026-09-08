@@ -798,6 +798,7 @@ version = "0.0.1"
 name = "luzure-render"
 version = "0.0.1"
 dependencies = [
+ "luzure-math",
  "raw-window-handle",
  "thiserror 2.0.20",
 ]
@@ -818,6 +819,7 @@ dependencies = [
 name = "luzure-wgpu"
 version = "0.0.1"
 dependencies = [
+ "bytemuck",
  "luzure-render",
  "pollster",
  "raw-window-handle",

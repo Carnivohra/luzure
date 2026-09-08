@@ -1,4 +1,4 @@
-use wgpu::{Device, Surface, SurfaceConfiguration};
+use wgpu::{Device, Surface, SurfaceConfiguration, TextureFormat};
 
 pub struct WgpuSurface {
     surface: Surface<'static>,
@@ -15,6 +15,10 @@ impl WgpuSurface {
 
     pub(crate) const fn surface(&self) -> &Surface<'static> {
         &self.surface
+    }
+
+    pub(crate) const fn format(&self) -> TextureFormat {
+        self.config.format
     }
 
     pub(crate) fn resize(&mut self, device: &Device, size: (u32, u32)) {

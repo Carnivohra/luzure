@@ -47,12 +47,13 @@ impl Renderer for WgpuRenderer {
             self.state = Some(WgpuRendererState::new(adapter, device, queue));
         }
 
-        let state = self.state.as_ref()
+        let state = self.state.as_mut()
             .ok_or(RenderError::DeviceRequest)?;
 
         let config = surface.get_default_config(state.adapter(), size.0, size.1)
             .ok_or(RenderError::SurfaceUnsupported)?;
 
+        state.ensure_pipeline(config.format);
         surface.configure(state.device(), &config);
 
         Ok(WgpuSurface::new(surface, config))
@@ -77,6 +78,9 @@ impl Renderer for WgpuRenderer {
         let state = self.state.as_ref()
             .ok_or(RenderError::DeviceRequest)?;
 
+        let pipeline = state.pipeline(surface.format())
+            .ok_or(RenderError::PipelineUnavailable)?;
+
         let frame = match surface.surface().get_current_texture() {
             CurrentSurfaceTexture::Success(frame) | CurrentSurfaceTexture::Suboptimal(frame) => frame,
             CurrentSurfaceTexture::Timeout | CurrentSurfaceTexture::Occluded => return Ok(()),
@@ -88,7 +92,7 @@ impl Renderer for WgpuRenderer {
             label: Some("luzure-wgpu frame encoder"),
         });
 
-        let pass = encoder.begin_render_pass(&RenderPassDescriptor {
+        let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("luzure-wgpu clear pass"), color_attachments: &[Some(RenderPassColorAttachment {
                 view: &view, depth_slice: None, resolve_target: None, ops: Operations {
                     load: LoadOp::Clear(Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }), store: StoreOp::Store
@@ -96,6 +100,7 @@ impl Renderer for WgpuRenderer {
             })], ..Default::default()
         });
 
+        pass.set_pipeline(pipeline.pipeline());
         drop(pass);
         state.queue().submit([encoder.finish()]);
         state.queue().present(frame);

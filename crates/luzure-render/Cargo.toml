@@ -9,5 +9,7 @@ readme.workspace = true
 repository.workspace = true
 
 [dependencies]
+luzure-math.workspace = true
+
 raw-window-handle.workspace = true
 thiserror.workspace = true

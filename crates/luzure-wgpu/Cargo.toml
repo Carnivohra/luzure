@@ -11,6 +11,7 @@ repository.workspace = true
 [dependencies]
 luzure-render.workspace = true
 
+bytemuck.workspace = true
 pollster.workspace = true
 raw-window-handle.workspace = true
 thiserror.workspace = true
