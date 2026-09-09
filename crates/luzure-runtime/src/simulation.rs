@@ -4,7 +4,10 @@ use luzure_world::World;
 
 use std::time::Duration;
 
+use crate::render::RenderWriter;
+
 pub struct Simulation {
+    render_writer: RenderWriter,
     schedule: Schedule,
     world: World,
 }
@@ -12,8 +15,9 @@ pub struct Simulation {
 impl Simulation {
     pub const DEFAULT_TICK_RATE: u32 = 60;
 
-    pub fn new() -> Self {
+    pub(crate) fn new(render_writer: RenderWriter) -> Self {
         Self {
+            render_writer,
             schedule: Schedule::new(),
             world: World::new(),
         }
@@ -38,6 +42,8 @@ impl Simulation {
 
 impl ThreadTask for Simulation {
     fn tick(&mut self, delta: Duration) {
+        self.render_writer.scene_mut().clear();
         self.schedule.run(self.world.registry_mut(), delta);
+        self.render_writer.publish();
     }
 }
