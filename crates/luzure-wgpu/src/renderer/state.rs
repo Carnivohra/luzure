@@ -1,6 +1,6 @@
-use crate::{WgpuCamera, WgpuPipeline};
+use crate::{WgpuCamera, WgpuPipeline, instance::WgpuInstances, mesh::WgpuMesh};
 
-use luzure_render::Camera;
+use luzure_render::{Camera, MeshDescriptor, MeshHandle, MeshInstance, render::RenderError};
 use wgpu::{Adapter, BindGroupLayout, Device, Queue, TextureFormat};
 
 pub(super) struct WgpuRendererState {
@@ -8,6 +8,8 @@ pub(super) struct WgpuRendererState {
     camera: WgpuCamera,
     camera_bind_group_layout: BindGroupLayout,
     device: Device,
+    instances: WgpuInstances,
+    meshes: Vec<Option<WgpuMesh>>,
     pipelines: Vec<(TextureFormat, WgpuPipeline)>,
     queue: Queue,
 }
@@ -16,12 +18,15 @@ impl WgpuRendererState {
     pub(super) fn new(adapter: Adapter, device: Device, queue: Queue) -> Self {
         let camera_bind_group_layout = WgpuCamera::create_bind_group_layout(&device);
         let camera = WgpuCamera::new(&device, &camera_bind_group_layout, &Camera::IDENTITY);
+        let instances = WgpuInstances::new(&device);
 
         Self {
             adapter,
             camera,
             camera_bind_group_layout,
             device,
+            instances,
+            meshes: vec![],
             pipelines: Vec::new(),
             queue,
         }
@@ -37,6 +42,43 @@ impl WgpuRendererState {
 
     pub(super) fn update_camera(&self, camera: &Camera) {
         self.camera.update(&self.queue, camera);
+    }
+
+    pub(super) fn update_instances(&mut self, instances: &[MeshInstance]) -> Result<(), RenderError> {
+        self.instances.update(&self.device, &self.queue, instances)
+    }
+
+    pub(super) const fn instances(&self) -> &WgpuInstances {
+        &self.instances
+    }
+
+    pub(super) fn create_mesh(&mut self, descriptor: MeshDescriptor) -> Result<MeshHandle, RenderError> {
+        let value = u64::try_from(self.meshes.len())
+            .map_err(|_| RenderError::MeshCapacityExceeded)?;
+        let mesh = WgpuMesh::new(&self.device, descriptor)?;
+
+        self.meshes.push(Some(mesh));
+
+        Ok(MeshHandle::new(value))
+    }
+
+    pub(super) fn destroy_mesh(&mut self, handle: MeshHandle) -> Result<(), RenderError> {
+        let index = usize::try_from(handle.value())
+            .map_err(|_| RenderError::InvalidMeshHandle)?;
+        let mesh = self.meshes.get_mut(index)
+            .ok_or(RenderError::InvalidMeshHandle)?;
+
+        if mesh.take().is_none() {
+            return Err(RenderError::InvalidMeshHandle);
+        }
+
+        Ok(())
+    }
+
+    pub(super) fn mesh(&self, handle: MeshHandle) -> Option<&WgpuMesh> {
+        let index = usize::try_from(handle.value()).ok()?;
+
+        self.meshes.get(index)?.as_ref()
     }
 
     pub(super) fn ensure_pipeline(&mut self, surface_format: TextureFormat) {

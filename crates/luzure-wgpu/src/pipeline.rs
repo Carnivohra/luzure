@@ -1,5 +1,6 @@
 use crate::shader::MESH_SOURCE;
 
+use luzure_render::{MeshInstance, MeshVertex};
 use std::mem::size_of;
 use wgpu::{
     BindGroupLayout, BlendState, ColorTargetState, ColorWrites, Device, FragmentState,
@@ -8,11 +9,44 @@ use wgpu::{
     VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
 };
 
-const VERTEX_ATTRIBUTES: [VertexAttribute; 1] = [
+const VERTEX_ATTRIBUTES: [VertexAttribute; 3] = [
     VertexAttribute {
         format: VertexFormat::Float32x3,
         offset: 0,
         shader_location: 0,
+    },
+    VertexAttribute {
+        format: VertexFormat::Float32x3,
+        offset: size_of::<[f32; 3]>() as u64,
+        shader_location: 1,
+    },
+    VertexAttribute {
+        format: VertexFormat::Float32x2,
+        offset: size_of::<[f32; 6]>() as u64,
+        shader_location: 2,
+    },
+];
+
+const INSTANCE_ATTRIBUTES: [VertexAttribute; 4] = [
+    VertexAttribute {
+        format: VertexFormat::Float32x4,
+        offset: 0,
+        shader_location: 3,
+    },
+    VertexAttribute {
+        format: VertexFormat::Float32x4,
+        offset: size_of::<[f32; 4]>() as u64,
+        shader_location: 4,
+    },
+    VertexAttribute {
+        format: VertexFormat::Float32x4,
+        offset: size_of::<[f32; 8]>() as u64,
+        shader_location: 5,
+    },
+    VertexAttribute {
+        format: VertexFormat::Float32x4,
+        offset: size_of::<[f32; 12]>() as u64,
+        shader_location: 6,
     },
 ];
 
@@ -45,11 +79,18 @@ impl WgpuPipeline {
                     module: &shader,
                     entry_point: Some("vertex"),
                     compilation_options: PipelineCompilationOptions::default(),
-                    buffers: &[Some(VertexBufferLayout {
-                        array_stride: size_of::<[f32; 3]>() as u64,
-                        step_mode: VertexStepMode::Vertex,
-                        attributes: &VERTEX_ATTRIBUTES,
-                    })],
+                    buffers: &[
+                        Some(VertexBufferLayout {
+                            array_stride: size_of::<MeshVertex>() as u64,
+                            step_mode: VertexStepMode::Vertex,
+                            attributes: &VERTEX_ATTRIBUTES,
+                        }),
+                        Some(VertexBufferLayout {
+                            array_stride: size_of::<MeshInstance>() as u64,
+                            step_mode: VertexStepMode::Instance,
+                            attributes: &INSTANCE_ATTRIBUTES,
+                        }),
+                    ],
                 },
                 primitive: PrimitiveState::default(),
                 depth_stencil: None,

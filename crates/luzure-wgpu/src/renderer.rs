@@ -2,7 +2,7 @@ mod state;
 
 use state::WgpuRendererState;
 
-use luzure_render::{render::{RenderError, RenderFrame}, Renderer};
+use luzure_render::{MeshDescriptor, MeshHandle, render::{RenderError, RenderFrame}, Renderer};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 use wgpu::{Color, CommandEncoderDescriptor, CurrentSurfaceTexture, DeviceDescriptor, Instance, InstanceDescriptor, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, StoreOp, TextureViewDescriptor};
 
@@ -74,9 +74,26 @@ impl Renderer for WgpuRenderer {
         Ok(())
     }
 
-    fn render(&self, surface: &Self::Surface, render_frame: &RenderFrame) -> Result<(), RenderError> {
-        let state = self.state.as_ref()
+    fn create_mesh(&mut self, descriptor: MeshDescriptor) -> Result<MeshHandle, RenderError> {
+        let state = self.state.as_mut()
             .ok_or(RenderError::DeviceRequest)?;
+
+        state.create_mesh(descriptor)
+    }
+
+    fn destroy_mesh(&mut self, mesh: MeshHandle) -> Result<(), RenderError> {
+        let state = self.state.as_mut()
+            .ok_or(RenderError::DeviceRequest)?;
+
+        state.destroy_mesh(mesh)
+    }
+
+    fn render(&mut self, surface: &Self::Surface, render_frame: &RenderFrame) -> Result<(), RenderError> {
+        let state = self.state.as_mut()
+            .ok_or(RenderError::DeviceRequest)?;
+
+        state.update_camera(render_frame.camera());
+        state.update_instances(render_frame.instances())?;
 
         let pipeline = state.pipeline(surface.format())
             .ok_or(RenderError::PipelineUnavailable)?;
@@ -86,8 +103,6 @@ impl Renderer for WgpuRenderer {
             CurrentSurfaceTexture::Timeout | CurrentSurfaceTexture::Occluded => return Ok(()),
             _ => return Err(RenderError::SurfaceAcquisition),
         };
-
-        state.update_camera(render_frame.camera());
 
         let view = frame.texture.create_view(&TextureViewDescriptor::default());
         let mut encoder = state.device().create_command_encoder(&CommandEncoderDescriptor {
@@ -104,6 +119,34 @@ impl Renderer for WgpuRenderer {
 
         pass.set_pipeline(pipeline.pipeline());
         pass.set_bind_group(0, state.camera().bind_group(), &[]);
+
+        if !render_frame.mesh_batches().is_empty() {
+            pass.set_vertex_buffer(1, state.instances().buffer().slice(..));
+        }
+
+        for batch in render_frame.mesh_batches() {
+            let mesh = state.mesh(batch.mesh())
+                .ok_or(RenderError::InvalidMeshHandle)?;
+            let first_instance = batch.first_instance();
+            let instance_count = batch.instance_count();
+            let end_instance = first_instance.checked_add(instance_count)
+                .ok_or(RenderError::InvalidInstanceRange)?;
+            let end_index = usize::try_from(end_instance)
+                .map_err(|_| RenderError::InvalidInstanceRange)?;
+
+            if end_index > render_frame.instances().len() {
+                return Err(RenderError::InvalidInstanceRange);
+            }
+
+            if instance_count == 0 {
+                continue;
+            }
+
+            pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
+            pass.set_index_buffer(mesh.index_buffer().slice(..), mesh.index_format());
+            pass.draw_indexed(0..mesh.index_count(), 0, first_instance..end_instance);
+        }
+
         drop(pass);
         state.queue().submit([encoder.finish()]);
         state.queue().present(frame);

@@ -139,6 +139,24 @@ impl Registry {
             .flatten()
     }
 
+    pub fn query_pair<A: Send + Sync + 'static, B: Send + Sync + 'static>(&self)
+        -> impl Iterator<Item = (Entity, &A, &B)>
+    {
+        self.tables.iter()
+            .filter_map(|table| table.iter_pair::<A, B>())
+            .flatten()
+    }
+
+    pub fn query_pair_mut<A: Send + Sync + 'static, B: Send + Sync + 'static>(&mut self)
+        -> impl Iterator<Item = (Entity, &mut A, &B)>
+    {
+        assert_ne!(TypeId::of::<A>(), TypeId::of::<B>(), "mutable query component types must be unique");
+
+        self.tables.iter_mut()
+            .filter_map(|table| table.iter_pair_mut::<A, B>())
+            .flatten()
+    }
+
     pub fn contains_component<T: Send + Sync + 'static>(&self, entity: Entity) -> bool {
         let Some(location) = self.location(entity) else {
             return false;

@@ -752,6 +752,7 @@ dependencies = [
  "luzure-math",
  "luzure-render",
  "luzure-runtime",
+ "luzure-thread",
  "luzure-wgpu",
  "luzure-winit",
 ]
@@ -812,7 +813,15 @@ dependencies = [
  "luzure-game",
  "luzure-input",
  "luzure-render",
+ "luzure-thread",
  "luzure-world",
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "luzure-thread"
+version = "0.0.1"
+dependencies = [
  "thiserror 2.0.20",
 ]
 

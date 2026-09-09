@@ -10,6 +10,21 @@ pub enum RenderError {
 
     #[error("render surface dimensions must be greater than zero")]
     InvalidSurfaceSize,
+
+    #[error("render mesh must contain vertices and indices")]
+    InvalidMesh,
+
+    #[error("render mesh handle is invalid")]
+    InvalidMeshHandle,
+
+    #[error("render mesh index count exceeds supported capacity")]
+    MeshCapacityExceeded,
+
+    #[error("render instance data exceeds supported capacity")]
+    InstanceCapacityExceeded,
+
+    #[error("render mesh batch references an invalid instance range")]
+    InvalidInstanceRange,
     
     #[error("render pipeline is not available for the surface format")]
     PipelineUnavailable,

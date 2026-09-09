@@ -1,15 +1,17 @@
 use luzure_backend::{backend::{BackendApplication, BackendHandle}, input::InputEvent, window::{WindowDescriptor, WindowEvent, WindowEventKind}};
+use luzure_ecs::Registry;
 use luzure_game::Game;
 use luzure_input::input::InputState;
 use luzure_render::{Camera, RenderFrame, Renderer};
-use luzure_world::World;
+use luzure_thread::Thread;
 
-use crate::{runtime::RuntimeError, window::{PrimaryWindow, WindowManager}};
+use crate::{runtime::RuntimeError, simulation::Simulation, window::{PrimaryWindow, WindowManager}};
 
 pub struct Engine<R: Renderer, G: Game> {
     renderer: R,
     game: G,
-    world: World,
+    registry: Registry,
+    simulation_thread: Option<Thread<Simulation>>,
     _input_state: InputState,
     windows: WindowManager<R::Surface>,
 }
@@ -19,32 +21,41 @@ impl<R: Renderer, G: Game> Engine<R, G> {
         Self {
             renderer,
             game,
-            world: World::new(),
+            registry: Registry::new(),
+            simulation_thread: None,
             _input_state: InputState::default(),
             windows: WindowManager::new(),
         }
     }
 
     fn start<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), RuntimeError> {
+        let simulation = Simulation::new();
+
+        self.simulation_thread = Some(Thread::spawn("luzure-simulation", simulation, Simulation::DEFAULT_TICK_RATE)?);
+
         let descriptor = WindowDescriptor {
             title: self.game.metadata().title.to_owned(),
             ..Default::default()
         };
 
-        let entity = self.windows.create(self.world.registry_mut(), &mut self.renderer, handle, descriptor)?;
-        self.world.registry_mut().insert(entity, PrimaryWindow)?;
+        let entity = self.windows.create(&mut self.registry, &mut self.renderer, handle, descriptor)?;
+        self.registry.insert(entity, PrimaryWindow)?;
 
         Ok(())
     }
 
     fn tick(&mut self) -> Result<(), RuntimeError> {
-        self.windows.request_redraws(self.world.registry());
+        self.windows.request_redraws(&self.registry);
 
         Ok(())
     }
 
     fn stop<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), RuntimeError> {
-        self.windows.destroy_all(self.world.registry_mut(), handle)?;
+        if let Some(thread) = self.simulation_thread.take() {
+            thread.stop()?;
+        }
+
+        self.windows.destroy_all(&mut self.registry, handle)?;
 
         Ok(())
     }
@@ -76,7 +87,7 @@ impl<R: Renderer, G: Game> BackendApplication for Engine<R, G> {
     fn window_event<H: BackendHandle>(&mut self, _handle: &mut H, event: WindowEvent)
         -> Result<(), Self::Error>
     {
-        self.windows.synchronize(self.world.registry_mut(), event);
+        self.windows.synchronize(&mut self.registry, event);
 
         if let WindowEventKind::Resized { width, height } = event.kind {
             if let Some(surface) = self.windows.surface_mut(event.window_id) {
@@ -87,7 +98,7 @@ impl<R: Renderer, G: Game> BackendApplication for Engine<R, G> {
         if let WindowEventKind::RedrawRequested = event.kind {
             if let Some(surface) = self.windows.surface(event.window_id) {
                 let camera = Camera::IDENTITY;
-                let frame = RenderFrame::new(&camera);
+                let frame = RenderFrame::new(&camera, &[], &[]);
                 self.renderer.render(surface, &frame)?;
             }
         }

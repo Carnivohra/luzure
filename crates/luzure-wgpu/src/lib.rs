@@ -1,4 +1,6 @@
 mod camera;
+mod instance;
+mod mesh;
 mod pipeline;
 mod renderer;
 mod shader;

@@ -130,4 +130,34 @@ impl Table {
 
         Some(entities.iter().copied().zip(components))
     }
+
+    pub(crate) fn iter_pair<A: Send + Sync + 'static, B: Send + Sync + 'static>(&self)
+        -> Option<impl Iterator<Item = (Entity, &A, &B)>>
+    {
+        let first = self.components::<A>()?;
+        let second = self.components::<B>()?;
+
+        Some(self.entities.iter().copied()
+            .zip(first)
+            .zip(second)
+            .map(|((entity, first), second)| (entity, first, second)))
+    }
+
+    pub(crate) fn iter_pair_mut<A: Send + Sync + 'static, B: Send + Sync + 'static>(&mut self)
+        -> Option<impl Iterator<Item = (Entity, &mut A, &B)>>
+    {
+        let Self { entities, columns, .. } = self;
+        let [first, second] = columns.get_disjoint_mut([
+            &TypeId::of::<A>(),
+            &TypeId::of::<B>(),
+        ]);
+
+        let first = first?.as_any_mut().downcast_mut::<Vec<A>>()?;
+        let second = second?.as_any_mut().downcast_mut::<Vec<B>>()?;
+
+        Some(entities.iter().copied()
+            .zip(first)
+            .zip(second.iter())
+            .map(|((entity, first), second)| (entity, first, second)))
+    }
 }
