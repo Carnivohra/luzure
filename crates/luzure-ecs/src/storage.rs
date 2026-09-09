@@ -1,5 +1,3 @@
-mod erased;
-mod sparse_set;
+mod table;
 
-pub(crate) use erased::ErasedStorage;
-pub(crate) use sparse_set::SparseSet;
+pub(crate) use table::{ColumnFactory, Table, create_column};
