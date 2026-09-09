@@ -1,9 +1,11 @@
+use luzure_ecs::Schedule;
 use luzure_thread::ThreadTask;
 use luzure_world::World;
 
 use std::time::Duration;
 
 pub struct Simulation {
+    schedule: Schedule,
     world: World,
 }
 
@@ -12,8 +14,17 @@ impl Simulation {
 
     pub fn new() -> Self {
         Self {
+            schedule: Schedule::new(),
             world: World::new(),
         }
+    }
+
+    pub const fn schedule(&self) -> &Schedule {
+        &self.schedule
+    }
+
+    pub const fn schedule_mut(&mut self) -> &mut Schedule {
+        &mut self.schedule
     }
 
     pub const fn world(&self) -> &World {
@@ -26,5 +37,7 @@ impl Simulation {
 }
 
 impl ThreadTask for Simulation {
-    fn tick(&mut self, _delta: Duration) {}
+    fn tick(&mut self, delta: Duration) {
+        self.schedule.run(self.world.registry_mut(), delta);
+    }
 }

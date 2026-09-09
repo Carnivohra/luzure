@@ -4,13 +4,14 @@ mod location;
 pub use error::RegistryError;
 use location::EntityLocation;
 
-use crate::{Bundle, Entity, entity::EntityAllocator, storage::{ColumnFactory, Table, create_column}};
+use crate::{Bundle, Entity, entity::EntityAllocator, query::{QueryCache, QueryCacheKey}, storage::{ColumnFactory, Table, create_column}};
 
 use std::{any::TypeId, collections::{HashMap, hash_map::Entry}};
 
 pub struct Registry {
     entities: EntityAllocator,
     components: HashMap<TypeId, ColumnFactory>,
+    query_cache: QueryCache,
     tables: Vec<Table>,
     table_indices: HashMap<Vec<TypeId>, usize>,
     locations: Vec<Option<EntityLocation>>,
@@ -24,6 +25,7 @@ impl Registry {
         Self {
             entities: EntityAllocator::new(),
             components: HashMap::new(),
+            query_cache: QueryCache::new(),
             tables,
             table_indices,
             locations: vec![],
@@ -155,6 +157,64 @@ impl Registry {
         self.tables.iter_mut()
             .filter_map(|table| table.iter_pair_mut::<A, B>())
             .flatten()
+    }
+
+    pub fn for_each<T: Send + Sync + 'static, F: FnMut(Entity, &T)>(&mut self, mut each: F) {
+        let Self { query_cache, tables, .. } = self;
+        let table_indices = query_cache.tables(QueryCacheKey::single::<T>(), tables);
+
+        for index in table_indices {
+            let components = tables[*index].iter::<T>()
+                .expect("cached table must contain query component");
+
+            for (entity, component) in components {
+                each(entity, component);
+            }
+        }
+    }
+
+    pub fn for_each_mut<T: Send + Sync + 'static, F: FnMut(Entity, &mut T)>(&mut self, mut each: F) {
+        let Self { query_cache, tables, .. } = self;
+        let table_indices = query_cache.tables(QueryCacheKey::single::<T>(), tables);
+
+        for index in table_indices {
+            let components = tables[*index].iter_mut::<T>()
+                .expect("cached table must contain query component");
+
+            for (entity, component) in components {
+                each(entity, component);
+            }
+        }
+    }
+
+    pub fn for_each_pair<A: Send + Sync + 'static, B: Send + Sync + 'static, F: FnMut(Entity, &A, &B)>(&mut self, mut each: F) {
+        let Self { query_cache, tables, .. } = self;
+        let table_indices = query_cache.tables(QueryCacheKey::pair::<A, B>(), tables);
+
+        for index in table_indices {
+            let components = tables[*index].iter_pair::<A, B>()
+                .expect("cached table must contain query components");
+
+            for (entity, first, second) in components {
+                each(entity, first, second);
+            }
+        }
+    }
+
+    pub fn for_each_pair_mut<A: Send + Sync + 'static, B: Send + Sync + 'static, F: FnMut(Entity, &mut A, &B)>(&mut self, mut each: F) {
+        assert_ne!(TypeId::of::<A>(), TypeId::of::<B>(), "mutable query component types must be unique");
+
+        let Self { query_cache, tables, .. } = self;
+        let table_indices = query_cache.tables(QueryCacheKey::pair::<A, B>(), tables);
+
+        for index in table_indices {
+            let components = tables[*index].iter_pair_mut::<A, B>()
+                .expect("cached table must contain query components");
+
+            for (entity, first, second) in components {
+                each(entity, first, second);
+            }
+        }
     }
 
     pub fn contains_component<T: Send + Sync + 'static>(&self, entity: Entity) -> bool {
