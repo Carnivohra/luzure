@@ -1,10 +1,10 @@
-use luzure_backend::{Window, backend::BackendHandle, window::{WindowDescriptor, WindowEvent, WindowEventKind, WindowId}};
+use luzure_backend::{Window, backend::{BackendError, BackendHandle}, window::{WindowDescriptor, WindowEvent, WindowEventKind, WindowId}};
 use luzure_ecs::{Entity, Registry};
 use luzure_render::Renderer;
 
 use std::collections::HashMap;
 
-use crate::{runtime::RuntimeError, window::WindowState};
+use crate::{runtime::RuntimeError, window::{WindowPlan, WindowState}};
 
 pub struct WindowManager<S> {
     entities: HashMap<WindowId, Entity>,
@@ -29,35 +29,61 @@ impl<S> WindowManager<S> {
         self.window_ids.get(&entity).copied()
     }
 
-    pub(crate) fn create<R: Renderer<Surface = S>, H: BackendHandle>(&mut self, registry: &mut Registry, renderer: &mut R, handle: &mut H, descriptor: WindowDescriptor)
-        -> Result<Entity, RuntimeError>
+    pub(crate) fn apply<R: Renderer<Surface = S>, H: BackendHandle>(&mut self, plan: &mut WindowPlan, registry: &mut Registry, renderer: &mut R, handle: &mut H)
+        -> Result<(), RuntimeError>
     {
+        for (window, descriptor) in plan.creates() {
+            self.create(registry, renderer, handle, window, descriptor)?;
+        }
+
+        for window in plan.destroys() {
+            self.destroy(registry, handle, window)?;
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn create<R: Renderer<Surface = S>, H: BackendHandle>(&mut self, registry: &mut Registry, renderer: &mut R, handle: &mut H, entity: Entity, descriptor: WindowDescriptor)
+        -> Result<(), RuntimeError>
+    {
+        if !registry.contains(entity) {
+            return Err(BackendError::InvalidWindow.into());
+        }
+
         let window = handle.create_window(descriptor.clone())?;
         let window_id = window.id();
         let (width, height) = window.inner_size();
         let surface = renderer.create_surface(window.clone(), (width, height))?;
-        let entity = registry.spawn(window);
 
+        let _ = registry.insert(entity, window)?;
         registry.insert(entity, WindowState::new(descriptor, width, height))?;
         self.add(window_id, entity, surface);
 
-        Ok(entity)
+        Ok(())
+    }
+
+    pub(crate) fn destroy<H: BackendHandle>(&mut self, registry: &mut Registry, handle: &mut H, entity: Entity)
+        -> Result<(), RuntimeError>
+    {
+        let window_id = self.window_id(entity)
+            .ok_or(BackendError::InvalidWindow)?;
+
+        self.surfaces.remove(&window_id);
+        self.entities.remove(&window_id);
+        self.window_ids.remove(&entity);
+        registry.despawn(entity);
+        handle.destroy_window(window_id)?;
+
+        Ok(())
     }
 
     pub(crate) fn destroy_all<H: BackendHandle>(&mut self, registry: &mut Registry, handle: &mut H)
         -> Result<(), RuntimeError>
     {
-        let window_ids: Vec<WindowId> = self.entities.keys().copied().collect();
+        let entities: Vec<Entity> = self.window_ids.keys().copied().collect();
 
-        for window_id in window_ids {
-            self.surfaces.remove(&window_id);
-
-            if let Some(entity) = self.entities.remove(&window_id) {
-                self.window_ids.remove(&entity);
-                registry.despawn(entity);
-            }
-
-            handle.destroy_window(window_id)?;
+        for entity in entities {
+            self.destroy(registry, handle, entity)?;
         }
 
         Ok(())

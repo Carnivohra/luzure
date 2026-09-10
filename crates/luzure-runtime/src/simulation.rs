@@ -40,6 +40,10 @@ impl Simulation {
         &mut self.schedule
     }
 
+    pub const fn startup_schedule_mut(&mut self) -> &mut StartupSchedule {
+        &mut self.startup_schedule
+    }
+
     pub const fn world(&self) -> &World {
         &self.world
     }

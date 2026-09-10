@@ -1,33 +1,38 @@
-use luzure_ecs::{Schedule, StartupSchedule, StartupSystem, System};
+mod backend;
+mod render;
+mod simulation;
 
-use crate::render::{RenderExtractSystem, RenderExtraction};
+pub use backend::BackendContext;
+pub use render::RenderContext;
+pub use simulation::SimulationContext;
+
+use luzure_ecs::Registry;
+use luzure_game::GameMetadata;
+
+use crate::render::RenderExtraction;
+use crate::simulation::Simulation;
+use crate::window::WindowPlan;
 
 pub struct PluginContext<'a> {
-    render_extraction: &'a mut RenderExtraction,
-    schedule: &'a mut Schedule,
-    startup_schedule: &'a mut StartupSchedule,
+    pub backend: BackendContext<'a>,
+    pub render: RenderContext<'a>,
+    pub simulation: SimulationContext<'a>,
+    metadata: GameMetadata,
 }
 
 impl<'a> PluginContext<'a> {
-    pub(crate) const fn new(render_extraction: &'a mut RenderExtraction, schedule: &'a mut Schedule, startup_schedule: &'a mut StartupSchedule)
+    pub(crate) const fn new(metadata: GameMetadata, backend_registry: &'a mut Registry, windows: &'a mut WindowPlan, render_extraction: &'a mut RenderExtraction, simulation: &'a mut Simulation)
         -> Self
     {
         Self {
-            render_extraction,
-            schedule,
-            startup_schedule,
+            backend: BackendContext::new(backend_registry, windows),
+            render: RenderContext::new(render_extraction),
+            simulation: SimulationContext::new(simulation),
+            metadata,
         }
     }
 
-    pub fn add_startup_system(&mut self, system: StartupSystem) {
-        self.startup_schedule.add_system(system);
-    }
-
-    pub fn add_system(&mut self, system: System) {
-        self.schedule.add_system(system);
-    }
-
-    pub fn add_render_extract_system(&mut self, system: RenderExtractSystem) {
-        self.render_extraction.add_system(system);
+    pub const fn metadata(&self) -> GameMetadata {
+        self.metadata
     }
 }

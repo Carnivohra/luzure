@@ -3,7 +3,7 @@ use luzure_thread::ThreadTask;
 
 use std::time::Duration;
 
-use crate::{plugin::PluginContext, render::{RenderExtraction, RenderSceneProducer}};
+use crate::render::{RenderExtraction, RenderSceneProducer};
 
 use super::Simulation;
 
@@ -14,20 +14,12 @@ pub(crate) struct SimulationTask {
 }
 
 impl SimulationTask {
-    pub(crate) fn new(simulation: Simulation, render_scenes: RenderSceneProducer) -> Self {
+    pub(crate) fn new(simulation: Simulation, render_extraction: RenderExtraction, render_scenes: RenderSceneProducer) -> Self {
         Self {
-            render_extraction: RenderExtraction::new(),
+            render_extraction,
             render_scenes,
             simulation,
         }
-    }
-
-    pub(crate) fn plugin_context(&mut self) -> PluginContext<'_> {
-        PluginContext::new(
-            &mut self.render_extraction,
-            &mut self.simulation.schedule,
-            &mut self.simulation.startup_schedule,
-        )
     }
 }
 

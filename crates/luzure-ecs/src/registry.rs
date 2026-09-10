@@ -4,7 +4,7 @@ mod location;
 pub use error::RegistryError;
 use location::EntityLocation;
 
-use crate::{Bundle, Entity, entity::EntityAllocator, query::{QueryCache, QueryCacheKey}, storage::{ColumnFactory, Table, create_column}};
+use crate::{Bundle, Entity, entity::EntityAllocator, query::{QueryCache, QueryCacheKey}, resource::ResourceStorage, storage::{ColumnFactory, Table, create_column}};
 
 use std::{any::TypeId, collections::{HashMap, hash_map::Entry}};
 
@@ -12,6 +12,7 @@ pub struct Registry {
     entities: EntityAllocator,
     components: HashMap<TypeId, ColumnFactory>,
     query_cache: QueryCache,
+    resources: ResourceStorage,
     tables: Vec<Table>,
     table_indices: HashMap<Vec<TypeId>, usize>,
     locations: Vec<Option<EntityLocation>>,
@@ -26,6 +27,7 @@ impl Registry {
             entities: EntityAllocator::new(),
             components: HashMap::new(),
             query_cache: QueryCache::new(),
+            resources: ResourceStorage::new(),
             tables,
             table_indices,
             locations: vec![],
@@ -44,6 +46,26 @@ impl Registry {
 
     pub fn is_registered<T: 'static>(&self) -> bool {
         self.components.contains_key(&TypeId::of::<T>())
+    }
+
+    pub fn insert_resource<T: Send + Sync + 'static>(&mut self, resource: T) -> Option<T> {
+        self.resources.insert(resource)
+    }
+
+    pub fn resource<T: Send + Sync + 'static>(&self) -> Option<&T> {
+        self.resources.get()
+    }
+
+    pub fn resource_mut<T: Send + Sync + 'static>(&mut self) -> Option<&mut T> {
+        self.resources.get_mut()
+    }
+
+    pub fn remove_resource<T: Send + Sync + 'static>(&mut self) -> Option<T> {
+        self.resources.remove()
+    }
+
+    pub fn contains_resource<T: Send + Sync + 'static>(&self) -> bool {
+        self.resources.contains::<T>()
     }
 
     pub fn insert<T: Send + Sync + 'static>(&mut self, entity: Entity, component: T)

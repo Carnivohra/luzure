@@ -5,6 +5,7 @@ use metadata::GameMetadata;
 pub trait Game {
     type Plugins;
 
-    fn metadata(&self) -> GameMetadata;
+    const METADATA: GameMetadata;
+
     fn plugins(&mut self) -> Self::Plugins;
 }

@@ -2,6 +2,7 @@ mod bundle;
 mod entity;
 mod query;
 mod registry;
+mod resource;
 mod schedule;
 mod storage;
 
