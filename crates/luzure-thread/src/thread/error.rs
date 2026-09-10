@@ -1,3 +1,7 @@
+mod slot;
+
+pub(crate) use slot::ThreadErrorSlot;
+
 use thiserror::Error;
 
 #[derive(Debug, Error)]

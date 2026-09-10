@@ -3,7 +3,7 @@ pub use luzure_backend::{Backend, Window};
 pub use luzure_game::{Game, GameMetadata};
 pub use luzure_math::{Mat4, Vec2, Vec3};
 pub use luzure_render::{Camera, RenderFrame, Renderer};
-pub use luzure_runtime::runtime::RuntimeError;
+pub use luzure_runtime::{Plugin, PluginContext, runtime::RuntimeError};
 
 #[cfg(feature = "wgpu")]
 pub use luzure_wgpu::WgpuRenderer;

@@ -5,19 +5,19 @@ use luzure_input::input::InputState;
 use luzure_render::{Camera, Renderer};
 use luzure_thread::Thread;
 
-use crate::{render::{RenderExchange, RenderReader}, runtime::RuntimeError, simulation::Simulation, window::{PrimaryWindow, WindowManager}};
+use crate::{plugin::Plugin, render::{RenderExchange, RenderReader}, runtime::RuntimeError, simulation::{Simulation, SimulationTask}, window::{PrimaryWindow, WindowManager}};
 
-pub struct Engine<R: Renderer, G: Game> {
+pub struct Engine<R: Renderer, G: Game<Plugins: Plugin>> {
     renderer: R,
     render_reader: Option<RenderReader>,
     game: G,
     registry: Registry,
-    simulation_thread: Option<Thread<Simulation>>,
+    simulation_thread: Option<Thread<SimulationTask>>,
     _input_state: InputState,
     windows: WindowManager<R::Surface>,
 }
 
-impl<R: Renderer, G: Game> Engine<R, G> {
+impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
     pub fn new(renderer: R, game: G) -> Self {
         Self {
             renderer,
@@ -33,8 +33,14 @@ impl<R: Renderer, G: Game> Engine<R, G> {
     fn start<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), RuntimeError> {
         let exchange = RenderExchange::new();
         let (render_reader, render_writer) = exchange.split();
-        let simulation = Simulation::new(render_writer);
-        let simulation_thread = Thread::spawn("luzure-simulation", simulation, Simulation::DEFAULT_TICK_RATE)?;
+        let simulation = Simulation::new();
+        let mut simulation_task = SimulationTask::new(simulation, render_writer);
+        let mut plugins = self.game.plugins();
+        let mut context = simulation_task.plugin_context();
+
+        plugins.build(&mut context)?;
+
+        let simulation_thread = Thread::spawn("luzure-simulation", simulation_task, Simulation::DEFAULT_TICK_RATE)?;
 
         self.render_reader = Some(render_reader);
         self.simulation_thread = Some(simulation_thread);
@@ -51,6 +57,12 @@ impl<R: Renderer, G: Game> Engine<R, G> {
     }
 
     fn tick(&mut self) -> Result<(), RuntimeError> {
+        if let Some(simulation_thread) = &mut self.simulation_thread {
+            if let Some(error) = simulation_thread.take_error() {
+                return Err(error.into());
+            }
+        }
+
         if let Some(render_reader) = &mut self.render_reader {
             render_reader.update();
         }
@@ -61,19 +73,28 @@ impl<R: Renderer, G: Game> Engine<R, G> {
     }
 
     fn stop<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), RuntimeError> {
-        if let Some(thread) = self.simulation_thread.take() {
-            thread.stop()?;
-        }
+        let simulation_error = match self.simulation_thread.take() {
+            Some(thread) => match thread.stop() {
+                Ok((_, Some(error))) => Some(RuntimeError::from(error)),
+                Ok((_, None)) => None,
+                Err(error) => Some(RuntimeError::from(error)),
+            },
+            None => None,
+        };
 
         self.render_reader = None;
 
         self.windows.destroy_all(&mut self.registry, handle)?;
 
+        if let Some(error) = simulation_error {
+            return Err(error);
+        }
+
         Ok(())
     }
 }
 
-impl<R: Renderer, G: Game> BackendApplication for Engine<R, G> {
+impl<R: Renderer, G: Game<Plugins: Plugin>> BackendApplication for Engine<R, G> {
     type Error = RuntimeError;
 
     fn started<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), Self::Error> {

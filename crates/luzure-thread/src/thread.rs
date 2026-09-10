@@ -4,9 +4,12 @@ mod task;
 pub use error::ThreadError;
 pub use task::ThreadTask;
 
+use error::ThreadErrorSlot;
+
 use std::{num::NonZeroU32, sync::{Arc, atomic::{AtomicBool, AtomicU32, Ordering}}, thread::{self, JoinHandle}, time::{Duration, Instant}};
 
 pub struct Thread<T: ThreadTask> {
+    error: Arc<ThreadErrorSlot<T::Error>>,
     running: Arc<AtomicBool>,
     tick_rate: Arc<AtomicU32>,
     handle: Option<JoinHandle<T>>,
@@ -19,15 +22,18 @@ impl<T: ThreadTask> Thread<T> {
 
         let running = Arc::new(AtomicBool::new(true));
         let tick_rate = Arc::new(AtomicU32::new(tick_rate.get()));
+        let error = Arc::new(ThreadErrorSlot::new());
+        let thread_error = Arc::clone(&error);
         let thread_running = Arc::clone(&running);
         let thread_tick_rate = Arc::clone(&tick_rate);
 
         let handle = thread::Builder::new()
             .name(name.to_owned())
-            .spawn(move || Self::run(task, thread_tick_rate, thread_running))
+            .spawn(move || Self::run(task, thread_tick_rate, thread_running, thread_error))
             .map_err(ThreadError::Spawn)?;
 
         Ok(Self {
+            error,
             running,
             tick_rate,
             handle: Some(handle),
@@ -48,16 +54,22 @@ impl<T: ThreadTask> Thread<T> {
         Ok(())
     }
 
-    pub fn stop(mut self) -> Result<T, ThreadError> {
-        self.signal_stop();
-
-        self.handle.take()
-            .expect("running thread must have a join handle")
-            .join()
-            .map_err(|_| ThreadError::Panic)
+    pub fn take_error(&mut self) -> Option<T::Error> {
+        self.error.take()
     }
 
-    fn run(mut task: T, tick_rate: Arc<AtomicU32>, running: Arc<AtomicBool>) -> T {
+    pub fn stop(mut self) -> Result<(T, Option<T::Error>), ThreadError> {
+        self.signal_stop();
+
+        let task = self.handle.take()
+            .expect("running thread must have a join handle")
+            .join()
+            .map_err(|_| ThreadError::Panic)?;
+
+        Ok((task, self.error.take()))
+    }
+
+    fn run(mut task: T, tick_rate: Arc<AtomicU32>, running: Arc<AtomicBool>, error: Arc<ThreadErrorSlot<T::Error>>) -> T {
         let mut current_tick_rate = tick_rate.load(Ordering::Acquire);
         let mut tick_interval = Self::tick_interval(current_tick_rate);
         let mut next_tick = Instant::now();
@@ -78,7 +90,12 @@ impl<T: ThreadTask> Thread<T> {
                 continue;
             }
 
-            task.tick(tick_interval);
+            if let Err(task_error) = task.tick(tick_interval) {
+                error.store(task_error);
+                running.store(false, Ordering::Release);
+                break;
+            }
+
             next_tick += tick_interval;
 
             let now = Instant::now();

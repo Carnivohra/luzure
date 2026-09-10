@@ -1,7 +1,7 @@
 use luzure_backend::Backend;
 use luzure_game::Game;
 use luzure_render::Renderer;
-use luzure_runtime::{Engine, runtime::RuntimeError};
+use luzure_runtime::{Engine, Plugin, runtime::RuntimeError};
 
 pub struct App<B: Backend, R: Renderer> {
     backend: B,
@@ -16,7 +16,7 @@ impl<B: Backend, R: Renderer> App<B, R> {
         }
     }
 
-    pub fn run<G: Game>(self, game: G) -> Result<(), RuntimeError> {
+    pub fn run<G: Game<Plugins: Plugin>>(self, game: G) -> Result<(), RuntimeError> {
         self.backend.run(Engine::new(self.renderer, game))
     }
 }
