@@ -1,5 +1,5 @@
 mod exchange;
 mod extraction;
 
-pub(crate) use exchange::{RenderExchange, RenderReader, RenderWriter};
+pub(crate) use exchange::{RenderSceneConsumer, RenderSceneProducer, render_scene_buffer};
 pub use extraction::{RenderExtractSystem, RenderExtraction};

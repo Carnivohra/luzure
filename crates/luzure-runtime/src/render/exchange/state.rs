@@ -1,11 +1,11 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[repr(align(64))]
-pub(super) struct RenderExchangeState {
+pub(super) struct RenderSceneBufferState {
     value: AtomicUsize,
 }
 
-impl RenderExchangeState {
+impl RenderSceneBufferState {
     const INDEX_MASK: usize = 0b11;
     const READY: usize = 0b100;
 

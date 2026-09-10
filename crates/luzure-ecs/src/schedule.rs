@@ -1,5 +1,7 @@
+mod startup;
 mod system;
 
+pub use startup::{StartupSchedule, StartupSystem};
 pub use system::System;
 
 use crate::Registry;

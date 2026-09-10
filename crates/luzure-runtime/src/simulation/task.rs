@@ -3,21 +3,21 @@ use luzure_thread::ThreadTask;
 
 use std::time::Duration;
 
-use crate::{plugin::PluginContext, render::{RenderExtraction, RenderWriter}};
+use crate::{plugin::PluginContext, render::{RenderExtraction, RenderSceneProducer}};
 
 use super::Simulation;
 
 pub(crate) struct SimulationTask {
     render_extraction: RenderExtraction,
-    render_writer: RenderWriter,
+    render_scenes: RenderSceneProducer,
     simulation: Simulation,
 }
 
 impl SimulationTask {
-    pub(crate) fn new(simulation: Simulation, render_writer: RenderWriter) -> Self {
+    pub(crate) fn new(simulation: Simulation, render_scenes: RenderSceneProducer) -> Self {
         Self {
             render_extraction: RenderExtraction::new(),
-            render_writer,
+            render_scenes,
             simulation,
         }
     }
@@ -26,7 +26,7 @@ impl SimulationTask {
         PluginContext::new(
             &mut self.render_extraction,
             &mut self.simulation.schedule,
-            &mut self.simulation.world,
+            &mut self.simulation.startup_schedule,
         )
     }
 }
@@ -34,15 +34,22 @@ impl SimulationTask {
 impl ThreadTask for SimulationTask {
     type Error = RenderError;
 
+    fn start(&mut self) -> Result<(), Self::Error> {
+        self.simulation.start();
+
+        Ok(())
+    }
+
     fn tick(&mut self, delta: Duration) -> Result<(), Self::Error> {
         self.simulation.tick(delta);
 
-        let scene = self.render_writer.scene_mut();
+        let render_extraction = &self.render_extraction;
+        let registry = self.simulation.world().registry();
 
-        scene.clear();
-        self.render_extraction.run(self.simulation.world().registry(), scene)?;
-        self.render_writer.publish();
+        self.render_scenes.publish(|scene| {
+            scene.clear();
 
-        Ok(())
+            render_extraction.run(registry, scene)
+        })
     }
 }

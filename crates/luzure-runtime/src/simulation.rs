@@ -2,13 +2,14 @@ mod task;
 
 pub(crate) use task::SimulationTask;
 
-use luzure_ecs::Schedule;
+use luzure_ecs::{Schedule, StartupSchedule};
 use luzure_world::World;
 
 use std::time::Duration;
 
 pub struct Simulation {
     schedule: Schedule,
+    startup_schedule: StartupSchedule,
     world: World,
 }
 
@@ -18,8 +19,13 @@ impl Simulation {
     pub(crate) fn new() -> Self {
         Self {
             schedule: Schedule::new(),
+            startup_schedule: StartupSchedule::new(),
             world: World::new(),
         }
+    }
+
+    pub(crate) fn start(&mut self) {
+        self.startup_schedule.run(self.world.registry_mut());
     }
 
     pub(crate) fn tick(&mut self, delta: Duration) {

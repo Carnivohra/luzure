@@ -2,22 +2,22 @@ use luzure_render::RenderScene;
 
 use std::sync::Arc;
 
-use super::inner::RenderExchangeInner;
+use super::inner::RenderSceneBufferInner;
 
-pub(crate) struct RenderReader {
-    inner: Arc<RenderExchangeInner>,
+pub(crate) struct RenderSceneConsumer {
+    inner: Arc<RenderSceneBufferInner>,
     scene: usize,
 }
 
-impl RenderReader {
-    pub(super) fn new(inner: Arc<RenderExchangeInner>, scene: usize) -> Self {
+impl RenderSceneConsumer {
+    pub(super) fn new(inner: Arc<RenderSceneBufferInner>, scene: usize) -> Self {
         Self {
             inner,
             scene,
         }
     }
 
-    pub(crate) fn update(&mut self) -> bool {
+    pub(crate) fn refresh(&mut self) -> bool {
         let Some(scene) = self.inner.state().take(self.scene) else {
             return false;
         };
@@ -26,7 +26,7 @@ impl RenderReader {
         true
     }
 
-    pub(crate) fn scene(&self) -> &RenderScene {
+    pub(crate) fn current(&self) -> &RenderScene {
         unsafe { &*self.inner.scene(self.scene) }
     }
 }

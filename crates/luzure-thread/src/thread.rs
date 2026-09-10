@@ -70,6 +70,12 @@ impl<T: ThreadTask> Thread<T> {
     }
 
     fn run(mut task: T, tick_rate: Arc<AtomicU32>, running: Arc<AtomicBool>, error: Arc<ThreadErrorSlot<T::Error>>) -> T {
+        if let Err(task_error) = task.start() {
+            error.store(task_error);
+            running.store(false, Ordering::Release);
+            return task;
+        }
+
         let mut current_tick_rate = tick_rate.load(Ordering::Acquire);
         let mut tick_interval = Self::tick_interval(current_tick_rate);
         let mut next_tick = Instant::now();

@@ -5,11 +5,11 @@ use luzure_input::input::InputState;
 use luzure_render::{Camera, Renderer};
 use luzure_thread::Thread;
 
-use crate::{plugin::Plugin, render::{RenderExchange, RenderReader}, runtime::RuntimeError, simulation::{Simulation, SimulationTask}, window::{PrimaryWindow, WindowManager}};
+use crate::{plugin::Plugin, render::{RenderSceneConsumer, render_scene_buffer}, runtime::RuntimeError, simulation::{Simulation, SimulationTask}, window::{PrimaryWindow, WindowManager}};
 
 pub struct Engine<R: Renderer, G: Game<Plugins: Plugin>> {
     renderer: R,
-    render_reader: Option<RenderReader>,
+    render_scenes: Option<RenderSceneConsumer>,
     game: G,
     registry: Registry,
     simulation_thread: Option<Thread<SimulationTask>>,
@@ -21,7 +21,7 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
     pub fn new(renderer: R, game: G) -> Self {
         Self {
             renderer,
-            render_reader: None,
+            render_scenes: None,
             game,
             registry: Registry::new(),
             simulation_thread: None,
@@ -31,10 +31,9 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
     }
 
     fn start<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), RuntimeError> {
-        let exchange = RenderExchange::new();
-        let (render_reader, render_writer) = exchange.split();
+        let (render_scene_producer, render_scene_consumer) = render_scene_buffer();
         let simulation = Simulation::new();
-        let mut simulation_task = SimulationTask::new(simulation, render_writer);
+        let mut simulation_task = SimulationTask::new(simulation, render_scene_producer);
         let mut plugins = self.game.plugins();
         let mut context = simulation_task.plugin_context();
 
@@ -42,7 +41,7 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
 
         let simulation_thread = Thread::spawn("luzure-simulation", simulation_task, Simulation::DEFAULT_TICK_RATE)?;
 
-        self.render_reader = Some(render_reader);
+        self.render_scenes = Some(render_scene_consumer);
         self.simulation_thread = Some(simulation_thread);
 
         let descriptor = WindowDescriptor {
@@ -63,8 +62,8 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
             }
         }
 
-        if let Some(render_reader) = &mut self.render_reader {
-            render_reader.update();
+        if let Some(render_scenes) = &mut self.render_scenes {
+            render_scenes.refresh();
         }
 
         self.windows.request_redraws(&self.registry);
@@ -82,7 +81,7 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
             None => None,
         };
 
-        self.render_reader = None;
+        self.render_scenes = None;
 
         self.windows.destroy_all(&mut self.registry, handle)?;
 
@@ -130,9 +129,9 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> BackendApplication for Engine<R, G> 
 
         if let WindowEventKind::RedrawRequested = event.kind {
             if let Some(surface) = self.windows.surface(event.window_id) {
-                if let Some(render_reader) = &self.render_reader {
+                if let Some(render_scenes) = &self.render_scenes {
                     let camera = Camera::IDENTITY;
-                    let frame = render_reader.scene().frame(&camera);
+                    let frame = render_scenes.current().frame(&camera);
                     self.renderer.render(surface, &frame)?;
                 }
             }

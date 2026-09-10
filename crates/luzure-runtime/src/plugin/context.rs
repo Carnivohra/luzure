@@ -1,23 +1,26 @@
-use luzure_ecs::{Schedule, System};
-use luzure_world::World;
+use luzure_ecs::{Schedule, StartupSchedule, StartupSystem, System};
 
 use crate::render::{RenderExtractSystem, RenderExtraction};
 
 pub struct PluginContext<'a> {
     render_extraction: &'a mut RenderExtraction,
     schedule: &'a mut Schedule,
-    world: &'a mut World,
+    startup_schedule: &'a mut StartupSchedule,
 }
 
 impl<'a> PluginContext<'a> {
-    pub(crate) const fn new(render_extraction: &'a mut RenderExtraction, schedule: &'a mut Schedule, world: &'a mut World)
+    pub(crate) const fn new(render_extraction: &'a mut RenderExtraction, schedule: &'a mut Schedule, startup_schedule: &'a mut StartupSchedule)
         -> Self
     {
         Self {
             render_extraction,
             schedule,
-            world,
+            startup_schedule,
         }
+    }
+
+    pub fn add_startup_system(&mut self, system: StartupSystem) {
+        self.startup_schedule.add_system(system);
     }
 
     pub fn add_system(&mut self, system: System) {
@@ -26,13 +29,5 @@ impl<'a> PluginContext<'a> {
 
     pub fn add_render_extract_system(&mut self, system: RenderExtractSystem) {
         self.render_extraction.add_system(system);
-    }
-
-    pub const fn world(&self) -> &World {
-        self.world
-    }
-
-    pub const fn world_mut(&mut self) -> &mut World {
-        self.world
     }
 }
