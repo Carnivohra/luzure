@@ -3,6 +3,7 @@ pub mod plugin;
 pub mod render;
 pub mod simulation;
 pub mod runtime;
+mod thread;
 pub mod window;
 
 pub use engine::Engine;

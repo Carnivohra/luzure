@@ -3,70 +3,62 @@ use luzure_ecs::Registry;
 use luzure_game::Game;
 use luzure_input::input::InputState;
 use luzure_render::{Camera, Renderer};
-use luzure_thread::Thread;
 
-use crate::{plugin::{Plugin, PluginContext}, render::{RenderExtraction, RenderSceneConsumer, render_scene_buffer}, runtime::RuntimeError, simulation::{Simulation, SimulationTask}, window::{WindowManager, WindowPlan}};
+use crate::{plugin::{Plugin, PluginContext}, render::{RenderExtraction, RenderRuntime}, runtime::RuntimeError, simulation::{Simulation, SimulationTask}, thread::ThreadManager, window::WindowManager};
 
 pub struct Engine<R: Renderer, G: Game<Plugins: Plugin>> {
-    renderer: R,
-    render_scenes: Option<RenderSceneConsumer>,
+    render: RenderRuntime<R>,
+    threads: ThreadManager,
     game: G,
     registry: Registry,
-    simulation_thread: Option<Thread<SimulationTask>>,
     _input_state: InputState,
-    window_plan: WindowPlan,
     windows: WindowManager<R::Surface>,
 }
 
 impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
     pub fn new(renderer: R, game: G) -> Self {
         Self {
-            renderer,
-            render_scenes: None,
+            render: RenderRuntime::new(renderer),
+            threads: ThreadManager::new(),
             game,
             registry: Registry::new(),
-            simulation_thread: None,
             _input_state: InputState::default(),
-            window_plan: WindowPlan::new(),
             windows: WindowManager::new(),
         }
     }
 
     fn start<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), RuntimeError> {
-        let (render_scene_producer, render_scene_consumer) = render_scene_buffer();
         let mut render_extraction = RenderExtraction::new();
         let mut simulation = Simulation::new();
         let mut plugins = self.game.plugins();
-        let mut context = PluginContext::new(
-            G::METADATA,
-            &mut self.registry,
-            &mut self.window_plan,
-            &mut render_extraction,
-            &mut simulation,
-        );
+        {
+            let mut context = PluginContext::new(
+                G::METADATA,
+                &mut self.registry,
+                self.windows.plan_mut(),
+                &mut render_extraction,
+                &mut simulation,
+            );
 
-        plugins.build(&mut context)?;
-        self.windows.apply(&mut self.window_plan, &mut self.registry, &mut self.renderer, handle)?;
+            plugins.build(&mut context)?;
+        }
 
+        self.windows.apply(&mut self.registry, self.render.renderer_mut(), handle)?;
+
+        let render_scene_producer = self.render.start();
         let simulation_task = SimulationTask::new(simulation, render_extraction, render_scene_producer);
-        let simulation_thread = Thread::spawn("luzure-simulation", simulation_task, Simulation::DEFAULT_TICK_RATE)?;
 
-        self.render_scenes = Some(render_scene_consumer);
-        self.simulation_thread = Some(simulation_thread);
+        self.threads.start_simulation(simulation_task, Simulation::DEFAULT_TICK_RATE)?;
 
         Ok(())
     }
 
     fn tick(&mut self) -> Result<(), RuntimeError> {
-        if let Some(simulation_thread) = &mut self.simulation_thread {
-            if let Some(error) = simulation_thread.take_error() {
-                return Err(error.into());
-            }
+        if let Some(error) = self.threads.take_error() {
+            return Err(error);
         }
 
-        if let Some(render_scenes) = &mut self.render_scenes {
-            render_scenes.refresh();
-        }
+        self.render.update();
 
         self.windows.request_redraws(&self.registry);
 
@@ -74,20 +66,13 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
     }
 
     fn stop<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), RuntimeError> {
-        let simulation_error = match self.simulation_thread.take() {
-            Some(thread) => match thread.stop() {
-                Ok((_, Some(error))) => Some(RuntimeError::from(error)),
-                Ok((_, None)) => None,
-                Err(error) => Some(RuntimeError::from(error)),
-            },
-            None => None,
-        };
+        let thread_error = self.threads.stop();
 
-        self.render_scenes = None;
+        self.render.stop();
 
         self.windows.destroy_all(&mut self.registry, handle)?;
 
-        if let Some(error) = simulation_error {
+        if let Some(error) = thread_error {
             return Err(error);
         }
 
@@ -125,17 +110,15 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> BackendApplication for Engine<R, G> 
 
         if let WindowEventKind::Resized { width, height } = event.kind {
             if let Some(surface) = self.windows.surface_mut(event.window_id) {
-                self.renderer.resize_surface(surface, (width, height))?;
+                self.render.resize_surface(surface, (width, height))?;
             }
         }
 
         if let WindowEventKind::RedrawRequested = event.kind {
             if let Some(surface) = self.windows.surface(event.window_id) {
-                if let Some(render_scenes) = &self.render_scenes {
-                    let camera = Camera::IDENTITY;
-                    let frame = render_scenes.current().frame(&camera);
-                    self.renderer.render(surface, &frame)?;
-                }
+                let camera = Camera::IDENTITY;
+
+                self.render.render(surface, &camera)?;
             }
         }
 

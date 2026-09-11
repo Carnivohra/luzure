@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use crate::{runtime::RuntimeError, window::{WindowPlan, WindowState}};
 
 pub struct WindowManager<S> {
+    plan: WindowPlan,
     entities: HashMap<WindowId, Entity>,
     surfaces: HashMap<WindowId, S>,
     window_ids: HashMap<Entity, WindowId>,
@@ -15,6 +16,7 @@ pub struct WindowManager<S> {
 impl<S> WindowManager<S> {
     pub fn new() -> Self {
         Self {
+            plan: WindowPlan::new(),
             entities: HashMap::new(),
             surfaces: HashMap::new(),
             window_ids: HashMap::new(),
@@ -29,9 +31,15 @@ impl<S> WindowManager<S> {
         self.window_ids.get(&entity).copied()
     }
 
-    pub(crate) fn apply<R: Renderer<Surface = S>, H: BackendHandle>(&mut self, plan: &mut WindowPlan, registry: &mut Registry, renderer: &mut R, handle: &mut H)
+    pub(crate) const fn plan_mut(&mut self) -> &mut WindowPlan {
+        &mut self.plan
+    }
+
+    pub(crate) fn apply<R: Renderer<Surface = S>, H: BackendHandle>(&mut self, registry: &mut Registry, renderer: &mut R, handle: &mut H)
         -> Result<(), RuntimeError>
     {
+        let mut plan = std::mem::replace(&mut self.plan, WindowPlan::new());
+
         for (window, descriptor) in plan.creates() {
             self.create(registry, renderer, handle, window, descriptor)?;
         }
