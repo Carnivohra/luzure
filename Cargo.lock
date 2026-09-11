@@ -755,6 +755,7 @@ dependencies = [
  "luzure-thread",
  "luzure-wgpu",
  "luzure-winit",
+ "luzure-world",
 ]
 
 [[package]]

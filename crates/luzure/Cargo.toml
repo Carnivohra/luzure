@@ -25,3 +25,4 @@ luzure-runtime.workspace = true
 luzure-thread.workspace = true
 luzure-wgpu = { workspace = true, optional = true }
 luzure-winit = { workspace = true, optional = true }
+luzure-world.workspace = true
