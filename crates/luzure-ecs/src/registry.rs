@@ -4,28 +4,31 @@ mod location;
 pub use error::RegistryError;
 use location::EntityLocation;
 
-use crate::{Bundle, Entity, entity::EntityAllocator, query::{QueryCache, QueryCacheKey}, resource::ResourceStorage, storage::{ColumnFactory, Table, create_column}};
+use crate::{Bundle, Entity, component::ComponentId, entity::EntityAllocator, query::{QueryCache, QueryCacheKey}, resource::ResourceStorage, storage::{ArchetypeLayout, ColumnFactory, Table, create_column}};
 
 use std::{any::TypeId, collections::{HashMap, hash_map::Entry}};
 
 pub struct Registry {
     entities: EntityAllocator,
-    components: HashMap<TypeId, ColumnFactory>,
+    components: HashMap<TypeId, ComponentId>,
+    component_factories: Vec<ColumnFactory>,
     query_cache: QueryCache,
     resources: ResourceStorage,
     tables: Vec<Table>,
-    table_indices: HashMap<Vec<TypeId>, usize>,
+    table_indices: HashMap<ArchetypeLayout, usize>,
     locations: Vec<Option<EntityLocation>>,
 }
 
 impl Registry {
     pub fn new() -> Self {
-        let tables = vec![Table::new(vec![], &HashMap::new())];
-        let table_indices = HashMap::from([(vec![], 0)]);
+        let empty_layout = ArchetypeLayout::new(vec![]);
+        let tables = vec![Table::new(empty_layout.clone(), &[])];
+        let table_indices = HashMap::from([(empty_layout, 0)]);
 
         Self {
             entities: EntityAllocator::new(),
             components: HashMap::new(),
+            component_factories: vec![],
             query_cache: QueryCache::new(),
             resources: ResourceStorage::new(),
             tables,
@@ -38,14 +41,18 @@ impl Registry {
         match self.components.entry(TypeId::of::<T>()) {
             Entry::Occupied(_) => false,
             Entry::Vacant(entry) => {
-                entry.insert(create_column::<T>);
+                let index = u32::try_from(self.component_factories.len())
+                    .expect("component capacity exceeded");
+
+                entry.insert(ComponentId::new(index));
+                self.component_factories.push(create_column::<T>);
                 true
             },
         }
     }
 
     pub fn is_registered<T: 'static>(&self) -> bool {
-        self.components.contains_key(&TypeId::of::<T>())
+        self.component_id::<T>().is_some()
     }
 
     pub fn insert_resource<T: Send + Sync + 'static>(&mut self, resource: T) -> Option<T> {
@@ -76,18 +83,19 @@ impl Registry {
         }
 
         self.register::<T>();
+        let component_id = self.component_id::<T>()
+            .expect("registered component must have an id");
 
         let location = self.location(entity)
             .expect("existing entity must have a table location");
 
-        if self.tables[location.table].contains(TypeId::of::<T>()) {
-            return Ok(Some(self.tables[location.table].replace(location.row, component)));
+        if self.tables[location.table].contains(component_id) {
+            return Ok(Some(self.tables[location.table].replace(component_id, location.row, component)));
         }
 
         let mut component_ids = self.tables[location.table].component_ids().to_vec();
 
-        component_ids.push(TypeId::of::<T>());
-        component_ids.sort_unstable();
+        component_ids.push(component_id);
 
         let table = self.table_or_create(component_ids);
         let (_, mut components, moved_entity) = self.tables[location.table].swap_remove(location.row);
@@ -96,7 +104,7 @@ impl Registry {
             self.locations[moved_entity.index() as usize] = Some(location);
         }
 
-        components.push((TypeId::of::<T>(), Box::new(component)));
+        components.push((component_id, Box::new(component)));
 
         let row = self.tables[table].push(entity, components);
         self.locations[entity.index() as usize] = Some(EntityLocation::new(table, row));
@@ -106,13 +114,14 @@ impl Registry {
 
     pub fn remove<T: Send + Sync + 'static>(&mut self, entity: Entity) -> Option<T> {
         let location = self.location(entity)?;
+        let component_id = self.component_id::<T>()?;
 
-        if !self.tables[location.table].contains(TypeId::of::<T>()) {
+        if !self.tables[location.table].contains(component_id) {
             return None;
         }
 
         let component_ids = self.tables[location.table].component_ids().iter().copied()
-            .filter(|component_id| *component_id != TypeId::of::<T>())
+            .filter(|current_id| *current_id != component_id)
             .collect();
 
         let table = self.table_or_create(component_ids);
@@ -125,11 +134,11 @@ impl Registry {
         let mut removed = None;
         let mut retained = Vec::with_capacity(components.len().saturating_sub(1));
 
-        for (component_id, component) in components {
-            if component_id == TypeId::of::<T>() {
+        for (current_id, component) in components {
+            if current_id == component_id {
                 removed = component.downcast::<T>().ok().map(|component| *component);
             } else {
-                retained.push((component_id, component));
+                retained.push((current_id, component));
             }
         }
 
@@ -141,33 +150,42 @@ impl Registry {
 
     pub fn get<T: Send + Sync + 'static>(&self, entity: Entity) -> Option<&T> {
         let location = self.location(entity)?;
+        let component_id = self.component_id::<T>()?;
 
-        self.tables[location.table].get(location.row)
+        self.tables[location.table].get(component_id, location.row)
     }
 
     pub fn get_mut<T: Send + Sync + 'static>(&mut self, entity: Entity) -> Option<&mut T> {
         let location = self.location(entity)?;
+        let component_id = self.component_id::<T>()?;
 
-        self.tables[location.table].get_mut(location.row)
+        self.tables[location.table].get_mut(component_id, location.row)
     }
 
     pub fn query<T: Send + Sync + 'static>(&self) -> impl Iterator<Item = (Entity, &T)> {
+        let component_id = self.component_id::<T>();
+
         self.tables.iter()
-            .filter_map(|table| table.iter::<T>())
+            .filter_map(move |table| table.iter::<T>(component_id?))
             .flatten()
     }
 
     pub fn query_mut<T: Send + Sync + 'static>(&mut self) -> impl Iterator<Item = (Entity, &mut T)> {
+        let component_id = self.component_id::<T>();
+
         self.tables.iter_mut()
-            .filter_map(|table| table.iter_mut::<T>())
+            .filter_map(move |table| table.iter_mut::<T>(component_id?))
             .flatten()
     }
 
     pub fn query_pair<A: Send + Sync + 'static, B: Send + Sync + 'static>(&self)
         -> impl Iterator<Item = (Entity, &A, &B)>
     {
+        let first_id = self.component_id::<A>();
+        let second_id = self.component_id::<B>();
+
         self.tables.iter()
-            .filter_map(|table| table.iter_pair::<A, B>())
+            .filter_map(move |table| table.iter_pair::<A, B>(first_id?, second_id?))
             .flatten()
     }
 
@@ -176,17 +194,24 @@ impl Registry {
     {
         assert_ne!(TypeId::of::<A>(), TypeId::of::<B>(), "mutable query component types must be unique");
 
+        let first_id = self.component_id::<A>();
+        let second_id = self.component_id::<B>();
+
         self.tables.iter_mut()
-            .filter_map(|table| table.iter_pair_mut::<A, B>())
+            .filter_map(move |table| table.iter_pair_mut::<A, B>(first_id?, second_id?))
             .flatten()
     }
 
     pub fn for_each<T: Send + Sync + 'static, F: FnMut(Entity, &T)>(&mut self, mut each: F) {
+        let Some(component_id) = self.component_id::<T>() else {
+            return;
+        };
+
         let Self { query_cache, tables, .. } = self;
-        let table_indices = query_cache.tables(QueryCacheKey::single::<T>(), tables);
+        let table_indices = query_cache.tables(QueryCacheKey::single(component_id), tables);
 
         for index in table_indices {
-            let components = tables[*index].iter::<T>()
+            let components = tables[*index].iter::<T>(component_id)
                 .expect("cached table must contain query component");
 
             for (entity, component) in components {
@@ -196,11 +221,15 @@ impl Registry {
     }
 
     pub fn for_each_mut<T: Send + Sync + 'static, F: FnMut(Entity, &mut T)>(&mut self, mut each: F) {
+        let Some(component_id) = self.component_id::<T>() else {
+            return;
+        };
+
         let Self { query_cache, tables, .. } = self;
-        let table_indices = query_cache.tables(QueryCacheKey::single::<T>(), tables);
+        let table_indices = query_cache.tables(QueryCacheKey::single(component_id), tables);
 
         for index in table_indices {
-            let components = tables[*index].iter_mut::<T>()
+            let components = tables[*index].iter_mut::<T>(component_id)
                 .expect("cached table must contain query component");
 
             for (entity, component) in components {
@@ -210,11 +239,18 @@ impl Registry {
     }
 
     pub fn for_each_pair<A: Send + Sync + 'static, B: Send + Sync + 'static, F: FnMut(Entity, &A, &B)>(&mut self, mut each: F) {
+        let Some(first_id) = self.component_id::<A>() else {
+            return;
+        };
+        let Some(second_id) = self.component_id::<B>() else {
+            return;
+        };
+
         let Self { query_cache, tables, .. } = self;
-        let table_indices = query_cache.tables(QueryCacheKey::pair::<A, B>(), tables);
+        let table_indices = query_cache.tables(QueryCacheKey::pair(first_id, second_id), tables);
 
         for index in table_indices {
-            let components = tables[*index].iter_pair::<A, B>()
+            let components = tables[*index].iter_pair::<A, B>(first_id, second_id)
                 .expect("cached table must contain query components");
 
             for (entity, first, second) in components {
@@ -226,11 +262,18 @@ impl Registry {
     pub fn for_each_pair_mut<A: Send + Sync + 'static, B: Send + Sync + 'static, F: FnMut(Entity, &mut A, &B)>(&mut self, mut each: F) {
         assert_ne!(TypeId::of::<A>(), TypeId::of::<B>(), "mutable query component types must be unique");
 
+        let Some(first_id) = self.component_id::<A>() else {
+            return;
+        };
+        let Some(second_id) = self.component_id::<B>() else {
+            return;
+        };
+
         let Self { query_cache, tables, .. } = self;
-        let table_indices = query_cache.tables(QueryCacheKey::pair::<A, B>(), tables);
+        let table_indices = query_cache.tables(QueryCacheKey::pair(first_id, second_id), tables);
 
         for index in table_indices {
-            let components = tables[*index].iter_pair_mut::<A, B>()
+            let components = tables[*index].iter_pair_mut::<A, B>(first_id, second_id)
                 .expect("cached table must contain query components");
 
             for (entity, first, second) in components {
@@ -243,16 +286,21 @@ impl Registry {
         let Some(location) = self.location(entity) else {
             return false;
         };
+        let Some(component_id) = self.component_id::<T>() else {
+            return false;
+        };
 
-        self.tables[location.table].contains(TypeId::of::<T>())
+        self.tables[location.table].contains(component_id)
     }
 
     pub fn spawn<T: Send + Sync + 'static>(&mut self, component: T) -> Entity {
         self.register::<T>();
+        let component_id = self.component_id::<T>()
+            .expect("registered component must have an id");
 
-        let table = self.table_or_create(vec![TypeId::of::<T>()]);
+        let table = self.table_or_create(vec![component_id]);
 
-        self.spawn_in_table(table, |table| table.push_component(component))
+        self.spawn_in_table(table, |table| table.push_component(component_id, component))
     }
 
     pub fn spawn_bundle<B: Bundle>(&mut self, bundle: B) -> Entity {
@@ -266,15 +314,16 @@ impl Registry {
         self.register::<A>();
         self.register::<B>();
 
-        let mut component_ids = vec![TypeId::of::<A>(), TypeId::of::<B>()];
+        let first_id = self.component_id::<A>()
+            .expect("registered component must have an id");
+        let second_id = self.component_id::<B>()
+            .expect("registered component must have an id");
 
-        component_ids.sort_unstable();
-
-        let table = self.table_or_create(component_ids);
+        let table = self.table_or_create(vec![first_id, second_id]);
 
         self.spawn_in_table(table, |table| {
-            table.push_component(first);
-            table.push_component(second);
+            table.push_component(first_id, first);
+            table.push_component(second_id, second);
         })
     }
 
@@ -288,16 +337,19 @@ impl Registry {
         self.register::<B>();
         self.register::<C>();
 
-        let mut component_ids = vec![TypeId::of::<A>(), TypeId::of::<B>(), TypeId::of::<C>()];
+        let first_id = self.component_id::<A>()
+            .expect("registered component must have an id");
+        let second_id = self.component_id::<B>()
+            .expect("registered component must have an id");
+        let third_id = self.component_id::<C>()
+            .expect("registered component must have an id");
 
-        component_ids.sort_unstable();
-
-        let table = self.table_or_create(component_ids);
+        let table = self.table_or_create(vec![first_id, second_id, third_id]);
 
         self.spawn_in_table(table, |table| {
-            table.push_component(first);
-            table.push_component(second);
-            table.push_component(third);
+            table.push_component(first_id, first);
+            table.push_component(second_id, second);
+            table.push_component(third_id, third);
         })
     }
 
@@ -339,6 +391,10 @@ impl Registry {
         self.entities.contains(entity)
     }
 
+    fn component_id<T: 'static>(&self) -> Option<ComponentId> {
+        self.components.get(&TypeId::of::<T>()).copied()
+    }
+
     fn location(&self, entity: Entity) -> Option<EntityLocation> {
         if !self.entities.contains(entity) {
             return None;
@@ -357,15 +413,17 @@ impl Registry {
         self.locations[index] = Some(location);
     }
 
-    fn table_or_create(&mut self, component_ids: Vec<TypeId>) -> usize {
-        if let Some(table) = self.table_indices.get(&component_ids) {
+    fn table_or_create(&mut self, component_ids: Vec<ComponentId>) -> usize {
+        let layout = ArchetypeLayout::new(component_ids);
+
+        if let Some(table) = self.table_indices.get(&layout) {
             return *table;
         }
 
         let table = self.tables.len();
 
-        self.tables.push(Table::new(component_ids.clone(), &self.components));
-        self.table_indices.insert(component_ids, table);
+        self.tables.push(Table::new(layout.clone(), &self.component_factories));
+        self.table_indices.insert(layout, table);
 
         table
     }

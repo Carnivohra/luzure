@@ -1,3 +1,3 @@
 mod table;
 
-pub(crate) use table::{ColumnFactory, Table, create_column};
+pub(crate) use table::{ArchetypeLayout, ColumnFactory, Table, create_column};

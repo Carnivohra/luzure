@@ -1,25 +1,20 @@
-use crate::storage::Table;
-
-use std::any::TypeId;
+use crate::{component::ComponentId, storage::Table};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct QueryCacheKey {
-    first: TypeId,
-    second: Option<TypeId>,
+    first: ComponentId,
+    second: Option<ComponentId>,
 }
 
 impl QueryCacheKey {
-    pub(crate) fn single<T: 'static>() -> Self {
+    pub(crate) const fn single(component_id: ComponentId) -> Self {
         Self {
-            first: TypeId::of::<T>(),
+            first: component_id,
             second: None,
         }
     }
 
-    pub(crate) fn pair<A: 'static, B: 'static>() -> Self {
-        let first = TypeId::of::<A>();
-        let second = TypeId::of::<B>();
-
+    pub(crate) fn pair(first: ComponentId, second: ComponentId) -> Self {
         if first <= second {
             Self {
                 first,

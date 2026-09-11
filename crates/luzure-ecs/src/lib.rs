@@ -1,4 +1,5 @@
 mod bundle;
+mod component;
 mod entity;
 mod query;
 mod registry;
