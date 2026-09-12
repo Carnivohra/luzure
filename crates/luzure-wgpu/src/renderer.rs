@@ -92,7 +92,7 @@ impl Renderer for WgpuRenderer {
         let state = self.state.as_mut()
             .ok_or(RenderError::DeviceRequest)?;
 
-        state.update_camera(render_frame.camera());
+        state.update_camera(render_frame.camera_matrices());
         state.update_instances(render_frame.instances())?;
 
         let pipeline = state.pipeline(surface.format())
@@ -110,7 +110,7 @@ impl Renderer for WgpuRenderer {
         });
 
         let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Some("luzure-wgpu clear pass"), color_attachments: &[Some(RenderPassColorAttachment {
+            label: Some("luzure-wgpu render pass"), color_attachments: &[Some(RenderPassColorAttachment {
                 view: &view, depth_slice: None, resolve_target: None, ops: Operations {
                     load: LoadOp::Clear(Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }), store: StoreOp::Store
                 },

@@ -1,4 +1,4 @@
-use luzure_render::{Camera, Renderer, render::RenderError};
+use luzure_render::{CameraMatrices, Renderer, render::RenderError};
 
 use super::{RenderPlan, RenderSceneConsumer, RenderSceneProducer, render_scene_buffer};
 
@@ -45,14 +45,14 @@ impl<R: Renderer> RenderRuntime<R> {
         self.renderer.resize_surface(surface, size)
     }
 
-    pub(crate) fn render(&mut self, surface: &R::Surface, camera: &Camera)
+    pub(crate) fn render(&mut self, surface: &R::Surface, camera_matrices: &CameraMatrices)
         -> Result<(), RenderError>
     {
         let Some(scenes) = &self.scenes else {
             return Ok(());
         };
 
-        let frame = scenes.current().frame(camera);
+        let frame = scenes.current().frame(camera_matrices);
 
         self.renderer.render(surface, &frame)
     }

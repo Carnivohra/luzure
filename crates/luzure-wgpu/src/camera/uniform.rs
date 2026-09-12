@@ -1,5 +1,5 @@
 use bytemuck::{Pod, Zeroable};
-use luzure_render::Camera;
+use luzure_render::CameraMatrices;
 
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -8,9 +8,9 @@ pub(super) struct CameraUniform {
 }
 
 impl CameraUniform {
-    pub(super) fn new(camera: &Camera) -> Self {
+    pub(super) fn new(camera_matrices: &CameraMatrices) -> Self {
         Self {
-            view_projection: *camera.view_projection().columns(),
+            view_projection: *camera_matrices.view_projection().columns(),
         }
     }
 }

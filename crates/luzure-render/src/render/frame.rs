@@ -1,23 +1,23 @@
-use crate::{Camera, MeshBatch, MeshInstance};
+use crate::{CameraMatrices, MeshBatch, MeshInstance};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RenderFrame<'a> {
-    camera: &'a Camera,
+    camera_matrices: &'a CameraMatrices,
     instances: &'a [MeshInstance],
     mesh_batches: &'a [MeshBatch],
 }
 
 impl<'a> RenderFrame<'a> {
-    pub const fn new(camera: &'a Camera, instances: &'a [MeshInstance], mesh_batches: &'a [MeshBatch]) -> Self {
+    pub const fn new(camera_matrices: &'a CameraMatrices, instances: &'a [MeshInstance], mesh_batches: &'a [MeshBatch]) -> Self {
         Self {
-            camera,
+            camera_matrices,
             instances,
             mesh_batches,
         }
     }
 
-    pub const fn camera(&self) -> &Camera {
-        self.camera
+    pub const fn camera_matrices(&self) -> &CameraMatrices {
+        self.camera_matrices
     }
 
     pub const fn instances(&self) -> &[MeshInstance] {

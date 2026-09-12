@@ -25,7 +25,7 @@ pub enum RenderError {
 
     #[error("render mesh batch references an invalid instance range")]
     InvalidInstanceRange,
-    
+
     #[error("render pipeline is not available for the surface format")]
     PipelineUnavailable,
 

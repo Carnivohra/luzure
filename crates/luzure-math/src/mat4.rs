@@ -60,7 +60,7 @@ impl Mat4 {
                 + self.columns[1][2] * right[1]
                 + self.columns[2][2] * right[2]
                 + self.columns[3][2] * right[3],
-                
+
             self.columns[0][3] * right[0]
                 + self.columns[1][3] * right[1]
                 + self.columns[2][3] * right[2]

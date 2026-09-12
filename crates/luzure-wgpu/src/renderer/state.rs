@@ -1,6 +1,6 @@
-use crate::{WgpuCamera, WgpuPipeline, instance::WgpuInstances, mesh::WgpuMesh};
+use crate::{camera::WgpuCamera, instance::WgpuInstances, mesh::WgpuMesh, pipeline::WgpuPipeline};
 
-use luzure_render::{Camera, MeshDescriptor, MeshHandle, MeshInstance, render::RenderError};
+use luzure_render::{CameraMatrices, MeshDescriptor, MeshHandle, MeshInstance, render::RenderError};
 use wgpu::{Adapter, BindGroupLayout, Device, Queue, TextureFormat};
 
 pub(super) struct WgpuRendererState {
@@ -17,7 +17,7 @@ pub(super) struct WgpuRendererState {
 impl WgpuRendererState {
     pub(super) fn new(adapter: Adapter, device: Device, queue: Queue) -> Self {
         let camera_bind_group_layout = WgpuCamera::create_bind_group_layout(&device);
-        let camera = WgpuCamera::new(&device, &camera_bind_group_layout, &Camera::IDENTITY);
+        let camera = WgpuCamera::new(&device, &camera_bind_group_layout, &CameraMatrices::IDENTITY);
         let instances = WgpuInstances::new(&device);
 
         Self {
@@ -40,8 +40,8 @@ impl WgpuRendererState {
         &self.camera
     }
 
-    pub(super) fn update_camera(&self, camera: &Camera) {
-        self.camera.update(&self.queue, camera);
+    pub(super) fn update_camera(&self, camera_matrices: &CameraMatrices) {
+        self.camera.update(&self.queue, camera_matrices);
     }
 
     pub(super) fn update_instances(&mut self, instances: &[MeshInstance]) -> Result<(), RenderError> {

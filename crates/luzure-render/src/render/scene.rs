@@ -1,4 +1,4 @@
-use crate::{Camera, MeshBatch, MeshHandle, MeshInstance};
+use crate::{CameraMatrices, MeshBatch, MeshHandle, MeshInstance};
 
 use super::{RenderError, RenderFrame};
 
@@ -45,6 +45,32 @@ impl RenderScene {
         Ok(())
     }
 
+    pub fn push_instance(&mut self, mesh: MeshHandle, instance: MeshInstance)
+        -> Result<(), RenderError>
+    {
+        let first_instance = u32::try_from(self.instances.len())
+            .map_err(|_| RenderError::InstanceCapacityExceeded)?;
+
+        first_instance.checked_add(1)
+            .ok_or(RenderError::InstanceCapacityExceeded)?;
+
+        if let Some(batch) = self.mesh_batches.last_mut().filter(|batch| batch.mesh() == mesh) {
+            let instance_count = batch.instance_count().checked_add(1)
+                .ok_or(RenderError::InstanceCapacityExceeded)?;
+
+            batch.first_instance().checked_add(instance_count)
+                .ok_or(RenderError::InstanceCapacityExceeded)?;
+
+            *batch = MeshBatch::new(mesh, batch.first_instance(), instance_count);
+        } else {
+            self.mesh_batches.push(MeshBatch::new(mesh, first_instance, 1));
+        }
+
+        self.instances.push(instance);
+
+        Ok(())
+    }
+
     pub fn instances(&self) -> &[MeshInstance] {
         &self.instances
     }
@@ -53,9 +79,9 @@ impl RenderScene {
         &self.mesh_batches
     }
 
-    pub fn frame<'a>(&'a self, camera: &'a Camera) -> RenderFrame<'a> {
+    pub fn frame<'a>(&'a self, camera_matrices: &'a CameraMatrices) -> RenderFrame<'a> {
         RenderFrame::new(
-            camera,
+            camera_matrices,
             &self.instances,
             &self.mesh_batches,
         )

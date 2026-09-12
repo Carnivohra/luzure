@@ -1,5 +1,5 @@
 use luzure_backend::{Window, backend::{BackendError, BackendHandle}, window::{WindowDescriptor, WindowId}};
-use winit::{dpi::PhysicalSize, event_loop::{ActiveEventLoop}, window::WindowAttributes};
+use winit::{dpi::PhysicalSize, event_loop::ActiveEventLoop, window::WindowAttributes};
 
 use crate::window::{WinitWindow, WinitWindowEntry};
 
@@ -56,7 +56,7 @@ impl BackendHandle for WinitBackendHandle<'_> {
 
     fn exit(&mut self) -> Result<(), BackendError> {
         self.event_loop.exit();
-        
+
         Ok(())
     }
 }

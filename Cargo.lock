@@ -834,7 +834,6 @@ dependencies = [
  "luzure-render",
  "pollster",
  "raw-window-handle",
- "thiserror 2.0.20",
  "wgpu",
 ]
 
@@ -844,7 +843,6 @@ version = "0.0.1"
 dependencies = [
  "luzure-backend",
  "raw-window-handle",
- "thiserror 2.0.20",
  "winit",
 ]
 

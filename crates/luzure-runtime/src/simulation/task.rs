@@ -35,7 +35,7 @@ impl ThreadTask for SimulationTask {
     fn tick(&mut self, delta: Duration) -> Result<(), Self::Error> {
         self.simulation.tick(delta);
 
-        let render_extraction = &self.render_extraction;
+        let render_extraction = &mut self.render_extraction;
         let registry = self.simulation.world().registry();
 
         self.render_scenes.publish(|scene| {

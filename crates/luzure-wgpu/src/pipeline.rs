@@ -50,12 +50,12 @@ const INSTANCE_ATTRIBUTES: [VertexAttribute; 4] = [
     },
 ];
 
-pub struct WgpuPipeline {
+pub(crate) struct WgpuPipeline {
     pipeline: RenderPipeline,
 }
 
 impl WgpuPipeline {
-    pub fn new(device: &Device, surface_format: TextureFormat, camera_bind_group_layout: &BindGroupLayout) -> Self {
+    pub(crate) fn new(device: &Device, surface_format: TextureFormat, camera_bind_group_layout: &BindGroupLayout) -> Self {
         let shader = device.create_shader_module(
             ShaderModuleDescriptor {
                 label: Some("luzure-wgpu mesh shader"),
@@ -115,7 +115,7 @@ impl WgpuPipeline {
         }
     }
 
-    pub const fn pipeline(&self) -> &RenderPipeline {
+    pub(crate) const fn pipeline(&self) -> &RenderPipeline {
         &self.pipeline
     }
 }

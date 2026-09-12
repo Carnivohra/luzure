@@ -2,7 +2,7 @@ use luzure_backend::{backend::{BackendApplication, BackendHandle}, input::InputE
 use luzure_ecs::Registry;
 use luzure_game::Game;
 use luzure_input::input::InputState;
-use luzure_render::{Camera, Renderer};
+use luzure_render::{CameraMatrices, Renderer};
 
 use crate::{plugin::{Plugin, PluginContext}, render::{RenderExtraction, RenderRuntime}, runtime::RuntimeError, simulation::{Simulation, SimulationTask}, thread::ThreadManager, window::WindowManager};
 
@@ -119,9 +119,9 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> BackendApplication for Engine<R, G> 
 
         if let WindowEventKind::RedrawRequested = event.kind {
             if let Some(surface) = self.windows.surface(event.window_id) {
-                let camera = Camera::IDENTITY;
+                let camera_matrices = CameraMatrices::IDENTITY;
 
-                self.render.render(surface, &camera)?;
+                self.render.render(surface, &camera_matrices)?;
             }
         }
 

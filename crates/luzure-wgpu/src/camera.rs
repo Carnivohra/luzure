@@ -3,7 +3,7 @@ mod uniform;
 use uniform::CameraUniform;
 
 use bytemuck::bytes_of;
-use luzure_render::Camera;
+use luzure_render::CameraMatrices;
 use std::mem::size_of;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{
@@ -12,7 +12,7 @@ use wgpu::{
     Device, Queue, ShaderStages,
 };
 
-pub struct WgpuCamera {
+pub(crate) struct WgpuCamera {
     buffer: Buffer,
     bind_group: BindGroup,
 }
@@ -36,8 +36,8 @@ impl WgpuCamera {
         )
     }
 
-    pub fn new(device: &Device, bind_group_layout: &BindGroupLayout, camera: &Camera) -> Self {
-        let uniform = CameraUniform::new(camera);
+    pub(crate) fn new(device: &Device, bind_group_layout: &BindGroupLayout, camera_matrices: &CameraMatrices) -> Self {
+        let uniform = CameraUniform::new(camera_matrices);
 
         let buffer = device.create_buffer_init(
             &BufferInitDescriptor {
@@ -61,12 +61,12 @@ impl WgpuCamera {
         Self { buffer, bind_group }
     }
 
-    pub fn update(&self, queue: &Queue, camera: &Camera) {
-        let uniform = CameraUniform::new(camera);
+    pub(crate) fn update(&self, queue: &Queue, camera_matrices: &CameraMatrices) {
+        let uniform = CameraUniform::new(camera_matrices);
         queue.write_buffer(&self.buffer, 0, bytes_of(&uniform));
     }
 
-    pub const fn bind_group(&self) -> &BindGroup {
+    pub(crate) const fn bind_group(&self) -> &BindGroup {
         &self.bind_group
     }
 }

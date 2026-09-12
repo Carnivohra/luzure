@@ -1,4 +1,4 @@
-pub mod metadata;
+pub(crate) mod metadata;
 
 use metadata::GameMetadata;
 
