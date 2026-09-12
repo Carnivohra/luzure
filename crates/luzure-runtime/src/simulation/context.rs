@@ -1,4 +1,4 @@
-use luzure_ecs::{StartupSystem, System};
+use luzure_ecs::{Bundle, Entity, StartupSystem, System};
 
 use crate::simulation::Simulation;
 
@@ -13,6 +13,10 @@ impl<'a> SimulationContext<'a> {
 
     pub fn insert_resource<T: Send + Sync + 'static>(&mut self, resource: T) -> Option<T> {
         self.simulation.world_mut().registry_mut().insert_resource(resource)
+    }
+
+    pub fn spawn<B: Bundle>(&mut self, bundle: B) -> Entity {
+        self.simulation.world_mut().registry_mut().spawn_bundle(bundle)
     }
 
     pub fn add_startup_system(&mut self, system: StartupSystem) {

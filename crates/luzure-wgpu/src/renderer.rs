@@ -74,11 +74,11 @@ impl Renderer for WgpuRenderer {
         Ok(())
     }
 
-    fn create_mesh(&mut self, descriptor: MeshDescriptor) -> Result<MeshHandle, RenderError> {
+    fn create_mesh(&mut self, mesh: MeshHandle, descriptor: MeshDescriptor) -> Result<(), RenderError> {
         let state = self.state.as_mut()
             .ok_or(RenderError::DeviceRequest)?;
 
-        state.create_mesh(descriptor)
+        state.create_mesh(mesh, descriptor)
     }
 
     fn destroy_mesh(&mut self, mesh: MeshHandle) -> Result<(), RenderError> {

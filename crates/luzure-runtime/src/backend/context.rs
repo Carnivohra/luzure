@@ -4,20 +4,20 @@ use luzure_ecs::{Entity, Registry};
 use crate::{runtime::RuntimeError, window::{PrimaryWindow, WindowPlan}};
 
 pub struct BackendContext<'a> {
-    registry: &'a mut Registry,
+    runtime_registry: &'a mut Registry,
     windows: &'a mut WindowPlan,
 }
 
 impl<'a> BackendContext<'a> {
-    pub(crate) const fn new(registry: &'a mut Registry, windows: &'a mut WindowPlan) -> Self {
+    pub(crate) const fn new(runtime_registry: &'a mut Registry, windows: &'a mut WindowPlan) -> Self {
         Self {
-            registry,
+            runtime_registry,
             windows,
         }
     }
 
     pub fn create_window(&mut self, descriptor: WindowDescriptor) -> Result<Entity, RuntimeError> {
-        let window = self.registry.spawn_empty();
+        let window = self.runtime_registry.spawn_empty();
 
         self.windows.create(window, descriptor);
 
@@ -25,7 +25,7 @@ impl<'a> BackendContext<'a> {
     }
 
     pub fn destroy_window(&mut self, window: Entity) -> Result<(), RuntimeError> {
-        if !self.registry.contains(window) {
+        if !self.runtime_registry.contains(window) {
             return Err(BackendError::InvalidWindow.into());
         }
 
@@ -35,23 +35,23 @@ impl<'a> BackendContext<'a> {
     }
 
     pub fn set_primary_window(&mut self, window: Entity) -> Result<(), RuntimeError> {
-        if !self.registry.contains(window) {
+        if !self.runtime_registry.contains(window) {
             return Err(BackendError::InvalidWindow.into());
         }
 
-        if self.registry.contains_component::<PrimaryWindow>(window) {
+        if self.runtime_registry.contains_component::<PrimaryWindow>(window) {
             return Ok(());
         }
 
-        let primary = self.registry.query::<PrimaryWindow>()
+        let primary = self.runtime_registry.query::<PrimaryWindow>()
             .next()
             .map(|(entity, _)| entity);
 
         if let Some(primary) = primary {
-            let _ = self.registry.remove::<PrimaryWindow>(primary);
+            let _ = self.runtime_registry.remove::<PrimaryWindow>(primary);
         }
 
-        let _ = self.registry.insert(window, PrimaryWindow)?;
+        let _ = self.runtime_registry.insert(window, PrimaryWindow)?;
 
         Ok(())
     }

@@ -1,16 +1,9 @@
-mod backend;
-mod render;
-mod simulation;
-
-pub use backend::BackendContext;
-pub use render::RenderContext;
-pub use simulation::SimulationContext;
-
 use luzure_ecs::Registry;
 use luzure_game::GameMetadata;
 
-use crate::render::RenderExtraction;
-use crate::simulation::Simulation;
+use crate::backend::BackendContext;
+use crate::render::{RenderContext, RenderExtraction, RenderPlan};
+use crate::simulation::{Simulation, SimulationContext};
 use crate::window::WindowPlan;
 
 pub struct PluginContext<'a> {
@@ -21,12 +14,12 @@ pub struct PluginContext<'a> {
 }
 
 impl<'a> PluginContext<'a> {
-    pub(crate) const fn new(metadata: GameMetadata, backend_registry: &'a mut Registry, windows: &'a mut WindowPlan, render_extraction: &'a mut RenderExtraction, simulation: &'a mut Simulation)
+    pub(crate) const fn new(metadata: GameMetadata, runtime_registry: &'a mut Registry, window_plan: &'a mut WindowPlan, render_plan: &'a mut RenderPlan, render_extraction: &'a mut RenderExtraction, simulation: &'a mut Simulation)
         -> Self
     {
         Self {
-            backend: BackendContext::new(backend_registry, windows),
-            render: RenderContext::new(render_extraction),
+            backend: BackendContext::new(runtime_registry, window_plan),
+            render: RenderContext::new(render_plan, render_extraction),
             simulation: SimulationContext::new(simulation),
             metadata,
         }

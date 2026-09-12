@@ -10,7 +10,7 @@ pub struct Engine<R: Renderer, G: Game<Plugins: Plugin>> {
     render: RenderRuntime<R>,
     threads: ThreadManager,
     game: G,
-    registry: Registry,
+    runtime_registry: Registry,
     _input_state: InputState,
     windows: WindowManager<R::Surface>,
 }
@@ -21,7 +21,7 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
             render: RenderRuntime::new(renderer),
             threads: ThreadManager::new(),
             game,
-            registry: Registry::new(),
+            runtime_registry: Registry::new(),
             _input_state: InputState::default(),
             windows: WindowManager::new(),
         }
@@ -31,11 +31,13 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
         let mut render_extraction = RenderExtraction::new();
         let mut simulation = Simulation::new();
         let mut plugins = self.game.plugins();
+
         {
             let mut context = PluginContext::new(
                 G::METADATA,
-                &mut self.registry,
+                &mut self.runtime_registry,
                 self.windows.plan_mut(),
+                self.render.plan_mut(),
                 &mut render_extraction,
                 &mut simulation,
             );
@@ -43,7 +45,8 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
             plugins.build(&mut context)?;
         }
 
-        self.windows.apply(&mut self.registry, self.render.renderer_mut(), handle)?;
+        self.windows.apply(&mut self.runtime_registry, self.render.renderer_mut(), handle)?;
+        self.render.apply()?;
 
         let render_scene_producer = self.render.start();
         let simulation_task = SimulationTask::new(simulation, render_extraction, render_scene_producer);
@@ -60,7 +63,7 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
 
         self.render.update();
 
-        self.windows.request_redraws(&self.registry);
+        self.windows.request_redraws(&self.runtime_registry);
 
         Ok(())
     }
@@ -70,7 +73,7 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
 
         self.render.stop();
 
-        self.windows.destroy_all(&mut self.registry, handle)?;
+        self.windows.destroy_all(&mut self.runtime_registry, handle)?;
 
         if let Some(error) = thread_error {
             return Err(error);
@@ -106,7 +109,7 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> BackendApplication for Engine<R, G> 
     fn window_event<H: BackendHandle>(&mut self, _handle: &mut H, event: WindowEvent)
         -> Result<(), Self::Error>
     {
-        self.windows.synchronize(&mut self.registry, event);
+        self.windows.synchronize(&mut self.runtime_registry, event);
 
         if let WindowEventKind::Resized { width, height } = event.kind {
             if let Some(surface) = self.windows.surface_mut(event.window_id) {

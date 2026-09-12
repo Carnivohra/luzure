@@ -1,8 +1,9 @@
 use luzure_render::{Camera, Renderer, render::RenderError};
 
-use super::{RenderSceneConsumer, RenderSceneProducer, render_scene_buffer};
+use super::{RenderPlan, RenderSceneConsumer, RenderSceneProducer, render_scene_buffer};
 
 pub(crate) struct RenderRuntime<R: Renderer> {
+    plan: RenderPlan,
     renderer: R,
     scenes: Option<RenderSceneConsumer>,
 }
@@ -10,9 +11,18 @@ pub(crate) struct RenderRuntime<R: Renderer> {
 impl<R: Renderer> RenderRuntime<R> {
     pub(crate) const fn new(renderer: R) -> Self {
         Self {
+            plan: RenderPlan::new(),
             renderer,
             scenes: None,
         }
+    }
+
+    pub(crate) const fn plan_mut(&mut self) -> &mut RenderPlan {
+        &mut self.plan
+    }
+
+    pub(crate) fn apply(&mut self) -> Result<(), RenderError> {
+        self.plan.apply(&mut self.renderer)
     }
 
     pub(crate) fn start(&mut self) -> RenderSceneProducer {

@@ -9,7 +9,7 @@ pub trait Renderer {
         -> Result<Self::Surface, RenderError>;
     fn resize_surface(&mut self, surface: &mut Self::Surface, size: (u32, u32))
         -> Result<(), RenderError>;
-    fn create_mesh(&mut self, descriptor: MeshDescriptor) -> Result<MeshHandle, RenderError>;
+    fn create_mesh(&mut self, mesh: MeshHandle, descriptor: MeshDescriptor) -> Result<(), RenderError>;
     fn destroy_mesh(&mut self, mesh: MeshHandle) -> Result<(), RenderError>;
     fn render(&mut self, surface: &Self::Surface, frame: &RenderFrame) -> Result<(), RenderError>;
 }

@@ -1,6 +1,9 @@
+mod mesh;
 mod system;
 
 pub use system::RenderExtractSystem;
+
+use mesh::extract_meshes;
 
 use luzure_ecs::Registry;
 use luzure_render::{RenderScene, render::RenderError};
@@ -21,6 +24,8 @@ impl RenderExtraction {
     pub fn run(&self, registry: &Registry, scene: &mut RenderScene)
         -> Result<(), RenderError>
     {
+        extract_meshes(registry, scene)?;
+
         for system in &self.systems {
             system(registry, scene)?;
         }

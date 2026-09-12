@@ -1,6 +1,8 @@
+mod context;
 mod task;
 
 pub(crate) use task::SimulationTask;
+pub use context::SimulationContext;
 
 use luzure_ecs::{Schedule, StartupSchedule};
 use luzure_world::World;

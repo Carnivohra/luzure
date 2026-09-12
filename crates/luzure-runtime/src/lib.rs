@@ -1,3 +1,4 @@
+mod backend;
 mod engine;
 pub mod plugin;
 pub mod render;

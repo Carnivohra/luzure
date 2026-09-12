@@ -1,7 +1,8 @@
 mod context;
 mod tuple;
 
-pub use context::{BackendContext, PluginContext, RenderContext, SimulationContext};
+pub use context::PluginContext;
+pub use crate::{backend::BackendContext, render::RenderContext, simulation::SimulationContext};
 
 use crate::runtime::RuntimeError;
 

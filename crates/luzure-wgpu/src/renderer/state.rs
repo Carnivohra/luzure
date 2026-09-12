@@ -52,14 +52,19 @@ impl WgpuRendererState {
         &self.instances
     }
 
-    pub(super) fn create_mesh(&mut self, descriptor: MeshDescriptor) -> Result<MeshHandle, RenderError> {
-        let value = u64::try_from(self.meshes.len())
-            .map_err(|_| RenderError::MeshCapacityExceeded)?;
+    pub(super) fn create_mesh(&mut self, handle: MeshHandle, descriptor: MeshDescriptor) -> Result<(), RenderError> {
+        let index = usize::try_from(handle.value())
+            .map_err(|_| RenderError::InvalidMeshHandle)?;
+
+        if index != self.meshes.len() {
+            return Err(RenderError::InvalidMeshHandle);
+        }
+
         let mesh = WgpuMesh::new(&self.device, descriptor)?;
 
         self.meshes.push(Some(mesh));
 
-        Ok(MeshHandle::new(value))
+        Ok(())
     }
 
     pub(super) fn destroy_mesh(&mut self, handle: MeshHandle) -> Result<(), RenderError> {
