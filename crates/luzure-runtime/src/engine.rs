@@ -32,25 +32,25 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
         let mut simulation = Simulation::new();
         let mut plugins = self.game.plugins();
 
-        {
-            let mut context = PluginContext::new(
-                G::METADATA,
-                &mut self.runtime_registry,
-                self.windows.plan_mut(),
-                self.render.plan_mut(),
-                &mut render_extraction,
-                &mut simulation,
-            );
+        let mut context = PluginContext::new(
+            G::METADATA,
+            &mut self.runtime_registry,
+            self.windows.plan_mut(),
+            self.render.plan_mut(),
+            &mut render_extraction,
+            &mut simulation,
+            self.threads.plan_mut(),
+        );
 
-            plugins.build(&mut context)?;
-        }
+        plugins.build(&mut context)?;
+        drop(context);
 
         self.windows.apply(&mut self.runtime_registry, self.render.renderer_mut(), handle)?;
 
         let render_scene_producer = self.render.start();
         let simulation_task = SimulationTask::new(simulation, render_extraction, render_scene_producer);
 
-        self.threads.start_simulation(simulation_task, Simulation::DEFAULT_TICK_RATE)?;
+        self.threads.start_simulation(simulation_task)?;
 
         Ok(())
     }

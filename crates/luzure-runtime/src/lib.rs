@@ -10,4 +10,5 @@ pub mod window;
 pub use engine::Engine;
 pub use plugin::{Plugin, PluginContext};
 pub use simulation::Simulation;
+pub use thread::{SimulationThreadPlan, ThreadContext};
 pub use window::{PrimaryWindow, WindowManager, WindowState};
