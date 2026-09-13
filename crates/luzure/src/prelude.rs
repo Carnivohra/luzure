@@ -3,7 +3,7 @@ pub use luzure_backend::{Backend, Window};
 pub use luzure_game::{Game, GameMetadata};
 pub use luzure_math::{Mat4, Vec2, Vec3};
 pub use luzure_render::{CameraMatrices, RenderFrame, Renderer};
-pub use luzure_runtime::{Plugin, PluginContext, runtime::RuntimeError};
+pub use luzure_runtime::{Plugin, PluginContext, ThreadMode, runtime::RuntimeError};
 pub use luzure_world::{Camera, Transform, World};
 
 #[cfg(feature = "wgpu")]
@@ -11,3 +11,6 @@ pub use luzure_wgpu::WgpuRenderer;
 
 #[cfg(feature = "winit")]
 pub use luzure_winit::WinitBackend;
+
+#[cfg(all(feature = "winit", target_os = "android"))]
+pub use luzure_winit::AndroidApp;

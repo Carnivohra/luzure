@@ -7,5 +7,5 @@ pub use error::BackendError;
 pub use handle::BackendHandle;
 
 pub trait Backend {
-    fn run<A: BackendApplication>(self, application: A) -> Result<(), A::Error>;
+    fn run<A: BackendApplication + 'static>(self, application: A) -> Result<(), A::Error>;
 }

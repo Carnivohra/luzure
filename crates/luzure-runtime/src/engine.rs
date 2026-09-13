@@ -56,10 +56,7 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
     }
 
     fn tick(&mut self) -> Result<(), RuntimeError> {
-        if let Some(error) = self.threads.take_error() {
-            return Err(error);
-        }
-
+        self.threads.update()?;
         self.render.update()?;
         self.windows.request_redraws();
 
@@ -88,10 +85,14 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> BackendApplication for Engine<R, G> 
     }
 
     fn resumed<H: BackendHandle>(&mut self, _handle: &mut H) -> Result<(), Self::Error> {
-        self.windows.resume_surfaces(self.render.renderer_mut())
+        self.windows.resume_surfaces(self.render.renderer_mut())?;
+        self.threads.resume();
+
+        Ok(())
     }
 
     fn suspended<H: BackendHandle>(&mut self, _handle: &mut H) -> Result<(), Self::Error> {
+        self.threads.suspend();
         self.render.suspend();
         self.windows.suspend_surfaces();
 

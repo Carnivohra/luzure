@@ -3,7 +3,7 @@ use std::error::Error;
 use crate::{backend::{BackendError, BackendHandle}, input::InputEvent, window::WindowEvent};
 
 pub trait BackendApplication {
-    type Error: Error + From<BackendError>;
+    type Error: Error + From<BackendError> + 'static;
 
     fn started<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), Self::Error>;
     fn resumed<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), Self::Error>;

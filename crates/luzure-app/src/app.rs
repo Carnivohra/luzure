@@ -8,7 +8,7 @@ pub struct App<B: Backend, R: Renderer> {
     renderer: R,
 }
 
-impl<B: Backend, R: Renderer> App<B, R> {
+impl<B: Backend, R: Renderer + 'static> App<B, R> {
     pub fn new(backend: B, renderer: R) -> Self {
         Self {
             backend,
@@ -16,7 +16,7 @@ impl<B: Backend, R: Renderer> App<B, R> {
         }
     }
 
-    pub fn run<G: Game<Plugins: Plugin>>(self, game: G) -> Result<(), RuntimeError> {
+    pub fn run<G: Game<Plugins: Plugin> + 'static>(self, game: G) -> Result<(), RuntimeError> {
         self.backend.run(Engine::new(self.renderer, game))
     }
 }

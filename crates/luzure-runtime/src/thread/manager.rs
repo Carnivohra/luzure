@@ -1,10 +1,8 @@
-use luzure_thread::Thread;
-
-use crate::{runtime::RuntimeError, simulation::SimulationTask, thread::ThreadPlan};
+use crate::{runtime::RuntimeError, simulation::SimulationTask, thread::{ThreadPlan, runner::SimulationRunner}};
 
 pub(crate) struct ThreadManager {
     plan: ThreadPlan,
-    simulation: Option<Thread<SimulationTask>>,
+    simulation: Option<SimulationRunner>,
 }
 
 impl ThreadManager {
@@ -24,26 +22,35 @@ impl ThreadManager {
     {
         debug_assert!(self.simulation.is_none());
 
+        let mode = self.plan.simulation().mode();
         let tick_rate = self.plan.simulation().tick_rate();
 
-        self.simulation = Some(Thread::spawn("luzure-simulation", task, tick_rate)?);
+        self.simulation = Some(SimulationRunner::start(task, mode, tick_rate)?);
 
         Ok(())
     }
 
-    pub(crate) fn take_error(&mut self) -> Option<RuntimeError> {
-        self.simulation.as_mut()?
-            .take_error()
-            .map(Into::into)
+    pub(crate) fn update(&mut self) -> Result<(), RuntimeError> {
+        let Some(simulation) = &mut self.simulation else {
+            return Ok(());
+        };
+
+        simulation.update()
+    }
+
+    pub(crate) fn suspend(&mut self) {
+        if let Some(simulation) = &mut self.simulation {
+            simulation.suspend();
+        }
+    }
+
+    pub(crate) fn resume(&mut self) {
+        if let Some(simulation) = &mut self.simulation {
+            simulation.resume();
+        }
     }
 
     pub(crate) fn stop(&mut self) -> Option<RuntimeError> {
-        let thread = self.simulation.take()?;
-
-        match thread.stop() {
-            Ok((_, Some(error))) => Some(error.into()),
-            Ok((_, None)) => None,
-            Err(error) => Some(error.into()),
-        }
+        self.simulation.take()?.stop()
     }
 }

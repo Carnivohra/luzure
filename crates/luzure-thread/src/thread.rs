@@ -10,6 +10,7 @@ use std::{num::NonZeroU32, sync::{Arc, atomic::{AtomicBool, AtomicU32, Ordering}
 
 pub struct Thread<T: ThreadTask> {
     error: Arc<ThreadErrorSlot<T::Error>>,
+    paused: Arc<AtomicBool>,
     running: Arc<AtomicBool>,
     tick_rate: Arc<AtomicU32>,
     handle: Option<JoinHandle<T>>,
@@ -20,20 +21,23 @@ impl<T: ThreadTask> Thread<T> {
         let tick_rate = NonZeroU32::new(tick_rate)
             .ok_or(ThreadError::InvalidTickRate)?;
 
+        let paused = Arc::new(AtomicBool::new(false));
         let running = Arc::new(AtomicBool::new(true));
         let tick_rate = Arc::new(AtomicU32::new(tick_rate.get()));
         let error = Arc::new(ThreadErrorSlot::new());
         let thread_error = Arc::clone(&error);
+        let thread_paused = Arc::clone(&paused);
         let thread_running = Arc::clone(&running);
         let thread_tick_rate = Arc::clone(&tick_rate);
 
         let handle = thread::Builder::new()
             .name(name.to_owned())
-            .spawn(move || Self::run(task, thread_tick_rate, thread_running, thread_error))
+            .spawn(move || Self::run(task, thread_tick_rate, thread_paused, thread_running, thread_error))
             .map_err(ThreadError::Spawn)?;
 
         Ok(Self {
             error,
+            paused,
             running,
             tick_rate,
             handle: Some(handle),
@@ -54,6 +58,18 @@ impl<T: ThreadTask> Thread<T> {
         Ok(())
     }
 
+    pub fn pause(&self) {
+        if !self.paused.swap(true, Ordering::AcqRel) {
+            self.wake();
+        }
+    }
+
+    pub fn resume(&self) {
+        if self.paused.swap(false, Ordering::AcqRel) {
+            self.wake();
+        }
+    }
+
     pub fn take_error(&mut self) -> Option<T::Error> {
         self.error.take()
     }
@@ -69,7 +85,7 @@ impl<T: ThreadTask> Thread<T> {
         Ok((task, self.error.take()))
     }
 
-    fn run(mut task: T, tick_rate: Arc<AtomicU32>, running: Arc<AtomicBool>, error: Arc<ThreadErrorSlot<T::Error>>) -> T {
+    fn run(mut task: T, tick_rate: Arc<AtomicU32>, paused: Arc<AtomicBool>, running: Arc<AtomicBool>, error: Arc<ThreadErrorSlot<T::Error>>) -> T {
         if let Err(task_error) = task.start() {
             error.store(task_error);
             running.store(false, Ordering::Release);
@@ -81,6 +97,12 @@ impl<T: ThreadTask> Thread<T> {
         let mut next_tick = Instant::now();
 
         while running.load(Ordering::Acquire) {
+            if paused.load(Ordering::Acquire) {
+                thread::park();
+                next_tick = Instant::now();
+                continue;
+            }
+
             let updated_tick_rate = tick_rate.load(Ordering::Acquire);
 
             if updated_tick_rate != current_tick_rate {

@@ -1,34 +1,49 @@
 mod application;
 mod handle;
+mod run;
 
-use application::WinitApplication;
 use handle::WinitBackendHandle;
+use run::run;
 
-use luzure_backend::{Backend, backend::{BackendApplication, BackendError}};
-use winit::{event_loop::EventLoop};
+use luzure_backend::{Backend, backend::BackendApplication};
 
+#[cfg(target_os = "android")]
+use winit::platform::android::activity::AndroidApp;
+
+#[cfg(not(target_os = "android"))]
 pub struct WinitBackend;
 
+#[cfg(target_os = "android")]
+pub struct WinitBackend {
+    android_app: AndroidApp,
+}
+
+#[cfg(not(target_os = "android"))]
 impl WinitBackend {
     pub const fn new() -> Self {
         Self
     }
 }
 
-impl Backend for WinitBackend {
-    fn run<A: BackendApplication>(self, application: A) -> Result<(), A::Error> {
-        let event_loop = EventLoop::new()
-            .map_err(|_| BackendError::EventLoopInitialization)?;
-
-        let mut application = WinitApplication::new(application);
-
-        event_loop.run_app(&mut application)
-            .map_err(|_| BackendError::EventLoop)?;
-
-        if let Some(error) = application.take_error() {
-            return Err(error);
+#[cfg(target_os = "android")]
+impl WinitBackend {
+    pub fn new(android_app: AndroidApp) -> Self {
+        Self {
+            android_app,
         }
+    }
+}
 
-        Ok(())
+#[cfg(not(target_os = "android"))]
+impl Backend for WinitBackend {
+    fn run<A: BackendApplication + 'static>(self, application: A) -> Result<(), A::Error> {
+        run(application)
+    }
+}
+
+#[cfg(target_os = "android")]
+impl Backend for WinitBackend {
+    fn run<A: BackendApplication + 'static>(self, application: A) -> Result<(), A::Error> {
+        run(self.android_app, application)
     }
 }

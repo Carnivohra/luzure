@@ -22,6 +22,7 @@ impl<A: BackendApplication> WinitApplication<A> {
         }
     }
 
+    #[cfg(not(target_family = "wasm"))]
     pub(super) fn take_error(&mut self) -> Option<A::Error> {
         self.error.take()
     }
