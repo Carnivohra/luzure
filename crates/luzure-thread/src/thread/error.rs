@@ -1,5 +1,7 @@
+#[cfg(not(target_family = "wasm"))]
 mod slot;
 
+#[cfg(not(target_family = "wasm"))]
 pub(crate) use slot::ThreadErrorSlot;
 
 use thiserror::Error;

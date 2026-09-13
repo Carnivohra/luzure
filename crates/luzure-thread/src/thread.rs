@@ -4,10 +4,13 @@ mod task;
 pub use error::ThreadError;
 pub use task::ThreadTask;
 
+#[cfg(not(target_family = "wasm"))]
 use error::ThreadErrorSlot;
 
+#[cfg(not(target_family = "wasm"))]
 use std::{num::NonZeroU32, sync::{Arc, atomic::{AtomicBool, AtomicU32, Ordering}}, thread::{self, JoinHandle}, time::{Duration, Instant}};
 
+#[cfg(not(target_family = "wasm"))]
 pub struct Thread<T: ThreadTask> {
     error: Arc<ThreadErrorSlot<T::Error>>,
     paused: Arc<AtomicBool>,
@@ -16,6 +19,7 @@ pub struct Thread<T: ThreadTask> {
     handle: Option<JoinHandle<T>>,
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl<T: ThreadTask> Thread<T> {
     pub fn spawn(name: &str, task: T, tick_rate: u32) -> Result<Self, ThreadError> {
         let tick_rate = NonZeroU32::new(tick_rate)
@@ -152,6 +156,7 @@ impl<T: ThreadTask> Thread<T> {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl<T: ThreadTask> Drop for Thread<T> {
     fn drop(&mut self) {
         self.signal_stop();

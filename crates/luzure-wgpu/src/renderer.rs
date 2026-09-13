@@ -26,6 +26,14 @@ impl WgpuRenderer {
             state: None,
         }
     }
+
+    fn configure_surface(state: &mut WgpuRendererState, surface: &mut WgpuSurface) -> Result<(), RenderError> {
+        surface.configure(state.adapter(), state.device())?;
+        state.ensure_pipeline(surface.format()
+            .ok_or(RenderError::SurfaceUnsupported)?);
+
+        Ok(())
+    }
 }
 
 impl Renderer for WgpuRenderer {
@@ -71,9 +79,7 @@ impl Renderer for WgpuRenderer {
         }
 
         if let Some(state) = &mut self.state {
-            surface.configure(state.adapter(), state.device())?;
-            state.ensure_pipeline(surface.format()
-                .ok_or(RenderError::SurfaceUnsupported)?);
+            Self::configure_surface(state, &mut surface)?;
         }
 
         Ok(surface)
@@ -89,9 +95,7 @@ impl Renderer for WgpuRenderer {
         surface.set_size(size);
 
         if let Some(state) = &mut self.state {
-            surface.configure(state.adapter(), state.device())?;
-            state.ensure_pipeline(surface.format()
-                .ok_or(RenderError::SurfaceUnsupported)?);
+            Self::configure_surface(state, surface)?;
         }
 
         Ok(())
@@ -117,13 +121,11 @@ impl Renderer for WgpuRenderer {
         };
 
         if surface.format().is_none() {
-            surface.configure(state.adapter(), state.device())?;
+            Self::configure_surface(state, surface)?;
         }
 
         let surface_format = surface.format()
             .ok_or(RenderError::SurfaceUnsupported)?;
-
-        state.ensure_pipeline(surface_format);
 
         state.update_camera(render_frame.camera_matrices());
         state.update_instances(render_frame.instances())?;

@@ -4,7 +4,7 @@ mod primary;
 mod state;
 mod target;
 
-pub use manager::WindowManager;
+pub(crate) use manager::WindowManager;
 pub use primary::PrimaryWindow;
 pub use state::WindowState;
 pub(crate) use plan::WindowPlan;

@@ -5,7 +5,8 @@ mod plan;
 mod runtime;
 
 pub(crate) use exchange::{RenderSceneConsumer, RenderSceneProducer, render_scene_buffer};
+pub(crate) use extraction::RenderExtraction;
 pub(crate) use plan::RenderPlan;
 pub(crate) use runtime::RenderRuntime;
 pub use context::RenderContext;
-pub use extraction::{RenderExtractSystem, RenderExtraction};
+pub use extraction::RenderExtractSystem;

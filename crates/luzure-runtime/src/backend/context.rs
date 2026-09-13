@@ -5,21 +5,21 @@ use crate::{runtime::RuntimeError, window::{PrimaryWindow, WindowPlan}};
 
 pub struct BackendContext<'a> {
     runtime_registry: &'a mut Registry,
-    windows: &'a mut WindowPlan,
+    window_plan: &'a mut WindowPlan,
 }
 
 impl<'a> BackendContext<'a> {
-    pub(crate) const fn new(runtime_registry: &'a mut Registry, windows: &'a mut WindowPlan) -> Self {
+    pub(crate) const fn new(runtime_registry: &'a mut Registry, window_plan: &'a mut WindowPlan) -> Self {
         Self {
             runtime_registry,
-            windows,
+            window_plan,
         }
     }
 
     pub fn create_window(&mut self, descriptor: WindowDescriptor) -> Result<Entity, RuntimeError> {
         let window = self.runtime_registry.spawn_empty();
 
-        self.windows.create(window, descriptor);
+        self.window_plan.create(window, descriptor);
 
         Ok(window)
     }
@@ -29,7 +29,7 @@ impl<'a> BackendContext<'a> {
             return Err(BackendError::InvalidWindow.into());
         }
 
-        self.windows.destroy(window);
+        self.window_plan.destroy(window);
 
         Ok(())
     }

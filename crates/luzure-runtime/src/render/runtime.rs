@@ -30,13 +30,16 @@ impl<R: Renderer> RenderRuntime<R> {
         producer
     }
 
-    pub(crate) fn update(&mut self) -> Result<bool, RenderError> {
+    pub(crate) fn update(&mut self) -> Result<(), RenderError> {
         if self.renderer.update()? == RendererStatus::Ready {
             self.plan.apply(&mut self.renderer)?;
         }
 
-        Ok(self.scenes.as_mut()
-            .is_some_and(RenderSceneConsumer::refresh))
+        if let Some(scenes) = &mut self.scenes {
+            scenes.refresh();
+        }
+
+        Ok(())
     }
 
     pub(crate) fn resize_surface(&mut self, surface: &mut R::Surface, size: (u32, u32))
@@ -66,7 +69,7 @@ impl<R: Renderer> RenderRuntime<R> {
     }
 
     pub(crate) fn stop(&mut self) {
-        self.renderer.suspend();
+        self.suspend();
         self.scenes = None;
     }
 }

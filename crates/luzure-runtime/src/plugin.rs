@@ -2,7 +2,7 @@ mod context;
 mod tuple;
 
 pub use context::PluginContext;
-pub use crate::{backend::BackendContext, render::RenderContext, simulation::SimulationContext, thread::ThreadContext};
+pub use crate::{backend::BackendContext, render::RenderContext, simulation::SimulationContext};
 
 use crate::runtime::RuntimeError;
 

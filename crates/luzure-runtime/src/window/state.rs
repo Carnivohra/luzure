@@ -54,9 +54,4 @@ impl WindowState {
     pub(super) fn set_focused(&mut self, focused: bool) {
         self.focused = focused;
     }
-
-    pub(super) fn set_title(&mut self, title: &str) {
-        self.title.clear();
-        self.title.push_str(title);
-    }
 }

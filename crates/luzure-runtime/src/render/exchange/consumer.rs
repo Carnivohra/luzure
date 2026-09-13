@@ -17,13 +17,12 @@ impl RenderSceneConsumer {
         }
     }
 
-    pub(crate) fn refresh(&mut self) -> bool {
+    pub(crate) fn refresh(&mut self) {
         let Some(scene) = self.inner.state().take(self.scene) else {
-            return false;
+            return;
         };
 
         self.scene = scene;
-        true
     }
 
     pub(crate) fn current(&self) -> &RenderScene {

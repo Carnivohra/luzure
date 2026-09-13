@@ -43,5 +43,5 @@ luzure-world = { path = "crates/luzure-world", version = "0.0.1" }
 bytemuck = { version = "1.25.2", features = ["derive"] }
 raw-window-handle = { version = "0.6.2", features = ["alloc"] }
 thiserror = "2.0.20"
-wgpu = "30.0.1"
-winit = { version = "0.30.13", features = ["android-native-activity"] }
+wgpu = { version = "30.0.1", default-features = false, features = ["parking_lot", "std", "wgsl"] }
+winit = { version = "0.30.13", default-features = false, features = ["rwh_06"] }

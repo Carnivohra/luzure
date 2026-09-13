@@ -1,22 +1,27 @@
 mod context;
+mod plan;
+mod runtime;
 mod task;
 
-pub(crate) use task::SimulationTask;
 pub use context::SimulationContext;
+pub use luzure_thread::ThreadMode;
+pub(crate) use plan::SimulationPlan;
+pub(crate) use runtime::SimulationRuntime;
+pub(crate) use task::SimulationTask;
 
 use luzure_ecs::{Schedule, StartupSchedule};
 use luzure_world::World;
 
 use std::time::Duration;
 
-pub struct Simulation {
+pub(crate) struct Simulation {
     schedule: Schedule,
     startup_schedule: StartupSchedule,
     world: World,
 }
 
 impl Simulation {
-    pub const DEFAULT_TICK_RATE: u32 = 32;
+    pub(crate) const DEFAULT_TICK_RATE: u32 = 32;
 
     pub(crate) fn new() -> Self {
         Self {
@@ -34,23 +39,19 @@ impl Simulation {
         self.schedule.run(self.world.registry_mut(), delta);
     }
 
-    pub const fn schedule(&self) -> &Schedule {
-        &self.schedule
-    }
-
-    pub const fn schedule_mut(&mut self) -> &mut Schedule {
+    pub(crate) const fn schedule_mut(&mut self) -> &mut Schedule {
         &mut self.schedule
     }
 
-    pub const fn startup_schedule_mut(&mut self) -> &mut StartupSchedule {
+    pub(crate) const fn startup_schedule_mut(&mut self) -> &mut StartupSchedule {
         &mut self.startup_schedule
     }
 
-    pub const fn world(&self) -> &World {
+    pub(crate) const fn world(&self) -> &World {
         &self.world
     }
 
-    pub const fn world_mut(&mut self) -> &mut World {
+    pub(crate) const fn world_mut(&mut self) -> &mut World {
         &mut self.world
     }
 }

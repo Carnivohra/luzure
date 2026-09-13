@@ -13,3 +13,9 @@ luzure-backend.workspace = true
 
 raw-window-handle.workspace = true
 winit.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+winit = { workspace = true, features = ["wayland", "wayland-csd-adwaita", "wayland-dlopen", "x11"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+winit = { workspace = true, features = ["android-native-activity"] }

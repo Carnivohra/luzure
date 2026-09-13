@@ -6,14 +6,14 @@ use std::collections::HashMap;
 
 use crate::{runtime::RuntimeError, window::{WindowPlan, WindowState, WindowTarget}};
 
-pub struct WindowManager<S> {
+pub(crate) struct WindowManager<S> {
     plan: WindowPlan,
     targets: HashMap<WindowId, WindowTarget<S>>,
     window_ids: HashMap<Entity, WindowId>,
 }
 
 impl<S> WindowManager<S> {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             plan: WindowPlan::new(),
             targets: HashMap::new(),
@@ -21,11 +21,11 @@ impl<S> WindowManager<S> {
         }
     }
 
-    pub fn entity(&self, window_id: WindowId) -> Option<Entity> {
+    pub(crate) fn entity(&self, window_id: WindowId) -> Option<Entity> {
         self.targets.get(&window_id).map(WindowTarget::entity)
     }
 
-    pub fn window_id(&self, entity: Entity) -> Option<WindowId> {
+    pub(crate) fn window_id(&self, entity: Entity) -> Option<WindowId> {
         self.window_ids.get(&entity).copied()
     }
 
@@ -84,10 +84,10 @@ impl<S> WindowManager<S> {
     pub(crate) fn destroy_all<H: BackendHandle>(&mut self, registry: &mut Registry, handle: &mut H)
         -> Result<(), RuntimeError>
     {
-        let entities: Vec<Entity> = self.window_ids.keys().copied().collect();
-
-        for entity in entities {
-            self.destroy(registry, handle, entity)?;
+        for (entity, window_id) in self.window_ids.drain() {
+            self.targets.remove(&window_id);
+            registry.despawn(entity);
+            handle.destroy_window(window_id)?;
         }
 
         Ok(())
@@ -124,25 +124,6 @@ impl<S> WindowManager<S> {
 
     pub(crate) fn surface_mut(&mut self, window_id: WindowId) -> Option<&mut S> {
         self.targets.get_mut(&window_id)?.surface_mut()
-    }
-
-    pub fn set_title(&self, registry: &mut Registry, entity: Entity, title: &str) -> bool {
-        let Some(window_id) = self.window_id(entity) else {
-            return false;
-        };
-
-        let Some(target) = self.targets.get(&window_id) else {
-            return false;
-        };
-
-        let Some(state) = registry.get_mut::<WindowState>(entity) else {
-            return false;
-        };
-
-        target.window().set_title(title);
-        state.set_title(title);
-
-        true
     }
 
     pub(crate) fn add(&mut self, window_id: WindowId, target: WindowTarget<S>) {

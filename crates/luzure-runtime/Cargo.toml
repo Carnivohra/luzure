@@ -12,7 +12,6 @@ repository.workspace = true
 luzure-backend.workspace = true
 luzure-ecs.workspace = true
 luzure-game.workspace = true
-luzure-input.workspace = true
 luzure-render.workspace = true
 luzure-thread.workspace = true
 luzure-world.workspace = true

@@ -1,6 +1,9 @@
 use luzure_backend::{Window, backend::{BackendError, BackendHandle}, window::{WindowDescriptor, WindowId}};
 use winit::{dpi::PhysicalSize, event_loop::ActiveEventLoop, window::WindowAttributes};
 
+#[cfg(target_family = "wasm")]
+use winit::platform::web::WindowAttributesExtWebSys;
+
 use crate::window::{WinitWindow, WinitWindowEntry};
 
 use std::rc::Rc;
@@ -26,6 +29,9 @@ impl BackendHandle for WinitBackendHandle<'_> {
             .with_inner_size(PhysicalSize::new(descriptor.width, descriptor.height))
             .with_resizable(descriptor.resizable)
             .with_visible(descriptor.visible);
+
+        #[cfg(target_family = "wasm")]
+        let attributes = attributes.with_append(true);
 
         let window = self.event_loop.create_window(attributes)
             .map_err(|_| BackendError::WindowCreation)?;
