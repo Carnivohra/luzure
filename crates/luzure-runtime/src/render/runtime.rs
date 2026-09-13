@@ -1,4 +1,4 @@
-use luzure_render::{CameraMatrices, Renderer, render::RenderError};
+use luzure_render::{CameraMatrices, Renderer, RendererStatus, render::RenderError};
 
 use super::{RenderPlan, RenderSceneConsumer, RenderSceneProducer, render_scene_buffer};
 
@@ -21,10 +21,6 @@ impl<R: Renderer> RenderRuntime<R> {
         &mut self.plan
     }
 
-    pub(crate) fn apply(&mut self) -> Result<(), RenderError> {
-        self.plan.apply(&mut self.renderer)
-    }
-
     pub(crate) fn start(&mut self) -> RenderSceneProducer {
         debug_assert!(self.scenes.is_none());
 
@@ -34,9 +30,13 @@ impl<R: Renderer> RenderRuntime<R> {
         producer
     }
 
-    pub(crate) fn update(&mut self) -> bool {
-        self.scenes.as_mut()
-            .is_some_and(RenderSceneConsumer::refresh)
+    pub(crate) fn update(&mut self) -> Result<bool, RenderError> {
+        if self.renderer.update()? == RendererStatus::Ready {
+            self.plan.apply(&mut self.renderer)?;
+        }
+
+        Ok(self.scenes.as_mut()
+            .is_some_and(RenderSceneConsumer::refresh))
     }
 
     pub(crate) fn resize_surface(&mut self, surface: &mut R::Surface, size: (u32, u32))
@@ -45,7 +45,7 @@ impl<R: Renderer> RenderRuntime<R> {
         self.renderer.resize_surface(surface, size)
     }
 
-    pub(crate) fn render(&mut self, surface: &R::Surface, camera_matrices: &CameraMatrices)
+    pub(crate) fn render(&mut self, surface: &mut R::Surface, camera_matrices: &CameraMatrices)
         -> Result<(), RenderError>
     {
         let Some(scenes) = &self.scenes else {
@@ -61,7 +61,12 @@ impl<R: Renderer> RenderRuntime<R> {
         &mut self.renderer
     }
 
+    pub(crate) fn suspend(&mut self) {
+        self.renderer.suspend();
+    }
+
     pub(crate) fn stop(&mut self) {
+        self.renderer.suspend();
         self.scenes = None;
     }
 }

@@ -42,7 +42,6 @@ luzure-world = { path = "crates/luzure-world", version = "0.0.1" }
 
 bytemuck = { version = "1.25.2", features = ["derive"] }
 raw-window-handle = { version = "0.6.2", features = ["alloc"] }
-pollster = "1.0.1"
 thiserror = "2.0.20"
 wgpu = "30.0.1"
 winit = "0.30.13"

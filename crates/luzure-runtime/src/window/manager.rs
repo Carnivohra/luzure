@@ -1,15 +1,14 @@
-use luzure_backend::{Window, backend::{BackendError, BackendHandle}, window::{WindowDescriptor, WindowEvent, WindowEventKind, WindowId}};
+use luzure_backend::{backend::{BackendError, BackendHandle}, window::{WindowDescriptor, WindowEvent, WindowEventKind, WindowId}};
 use luzure_ecs::{Entity, Registry};
 use luzure_render::Renderer;
 
 use std::collections::HashMap;
 
-use crate::{runtime::RuntimeError, window::{WindowPlan, WindowState}};
+use crate::{runtime::RuntimeError, window::{WindowPlan, WindowState, WindowTarget}};
 
 pub struct WindowManager<S> {
     plan: WindowPlan,
-    entities: HashMap<WindowId, Entity>,
-    surfaces: HashMap<WindowId, S>,
+    targets: HashMap<WindowId, WindowTarget<S>>,
     window_ids: HashMap<Entity, WindowId>,
 }
 
@@ -17,14 +16,13 @@ impl<S> WindowManager<S> {
     pub fn new() -> Self {
         Self {
             plan: WindowPlan::new(),
-            entities: HashMap::new(),
-            surfaces: HashMap::new(),
+            targets: HashMap::new(),
             window_ids: HashMap::new(),
         }
     }
 
     pub fn entity(&self, window_id: WindowId) -> Option<Entity> {
-        self.entities.get(&window_id).copied()
+        self.targets.get(&window_id).map(WindowTarget::entity)
     }
 
     pub fn window_id(&self, entity: Entity) -> Option<WindowId> {
@@ -63,9 +61,8 @@ impl<S> WindowManager<S> {
         let (width, height) = window.inner_size();
         let surface = renderer.create_surface(window.clone(), (width, height))?;
 
-        let _ = registry.insert(entity, window)?;
         registry.insert(entity, WindowState::new(descriptor, width, height))?;
-        self.add(window_id, entity, surface);
+        self.add(window_id, WindowTarget::new(entity, window, surface));
 
         Ok(())
     }
@@ -76,8 +73,7 @@ impl<S> WindowManager<S> {
         let window_id = self.window_id(entity)
             .ok_or(BackendError::InvalidWindow)?;
 
-        self.surfaces.remove(&window_id);
-        self.entities.remove(&window_id);
+        self.targets.remove(&window_id);
         self.window_ids.remove(&entity);
         registry.despawn(entity);
         handle.destroy_window(window_id)?;
@@ -97,24 +93,45 @@ impl<S> WindowManager<S> {
         Ok(())
     }
 
-    pub(crate) fn request_redraws(&self, registry: &Registry) {
-        for entity in self.entities.values() {
-            if let Some(window) = registry.get::<Window>(*entity) {
-                window.request_redraw();
-            }
+    pub(crate) fn request_redraws(&self) {
+        for target in self.targets.values() {
+            target.window().request_redraw();
         }
     }
 
-    pub(crate) fn surface(&self, window_id: WindowId) -> Option<&S> {
-        self.surfaces.get(&window_id)
+    pub(crate) fn resume_surfaces<R: Renderer<Surface = S>>(&mut self, renderer: &mut R)
+        -> Result<(), RuntimeError>
+    {
+        for target in self.targets.values_mut() {
+            if target.surface_mut().is_some() {
+                continue;
+            }
+
+            let window = target.window();
+            let surface = renderer.create_surface(window.clone(), window.inner_size())?;
+
+            target.set_surface(surface);
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn suspend_surfaces(&mut self) {
+        for target in self.targets.values_mut() {
+            target.suspend();
+        }
     }
 
     pub(crate) fn surface_mut(&mut self, window_id: WindowId) -> Option<&mut S> {
-        self.surfaces.get_mut(&window_id)
+        self.targets.get_mut(&window_id)?.surface_mut()
     }
 
     pub fn set_title(&self, registry: &mut Registry, entity: Entity, title: &str) -> bool {
-        let Some(window) = registry.get::<Window>(entity).cloned() else {
+        let Some(window_id) = self.window_id(entity) else {
+            return false;
+        };
+
+        let Some(target) = self.targets.get(&window_id) else {
             return false;
         };
 
@@ -122,18 +139,19 @@ impl<S> WindowManager<S> {
             return false;
         };
 
-        window.set_title(title);
+        target.window().set_title(title);
         state.set_title(title);
 
         true
     }
 
-    pub(crate) fn add(&mut self, window_id: WindowId, entity: Entity, surface: S) {
-        debug_assert!(!self.entities.contains_key(&window_id));
+    pub(crate) fn add(&mut self, window_id: WindowId, target: WindowTarget<S>) {
+        let entity = target.entity();
+
+        debug_assert!(!self.targets.contains_key(&window_id));
         debug_assert!(!self.window_ids.contains_key(&entity));
 
-        self.entities.insert(window_id, entity);
-        self.surfaces.insert(window_id, surface);
+        self.targets.insert(window_id, target);
         self.window_ids.insert(entity, window_id);
     }
 

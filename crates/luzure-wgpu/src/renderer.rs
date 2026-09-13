@@ -1,15 +1,20 @@
+mod initialization;
 mod state;
 
+use initialization::{WgpuRendererInitialization, initialize};
 use state::WgpuRendererState;
 
-use luzure_render::{MeshDescriptor, MeshHandle, render::{RenderError, RenderFrame}, Renderer};
+use luzure_render::{MeshDescriptor, MeshHandle, Renderer, RendererStatus, render::{RenderError, RenderFrame}};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
-use wgpu::{Color, CommandEncoderDescriptor, CurrentSurfaceTexture, DeviceDescriptor, Instance, InstanceDescriptor, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, StoreOp, TextureViewDescriptor};
+use wgpu::{Color, CommandEncoderDescriptor, CurrentSurfaceTexture, Instance, InstanceDescriptor, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor, StoreOp, TextureViewDescriptor};
 
 use crate::WgpuSurface;
 
+use std::task::{Context, Poll, Waker};
+
 pub struct WgpuRenderer {
     instance: Instance,
+    initialization: Option<WgpuRendererInitialization>,
     state: Option<WgpuRendererState>,
 }
 
@@ -17,6 +22,7 @@ impl WgpuRenderer {
     pub fn new() -> Self {
         Self {
             instance: Instance::new(InstanceDescriptor::new_without_display_handle()),
+            initialization: None,
             state: None,
         }
     }
@@ -25,38 +31,52 @@ impl WgpuRenderer {
 impl Renderer for WgpuRenderer {
     type Surface = WgpuSurface;
 
-    fn create_surface<W: HasDisplayHandle + HasWindowHandle + Send + Sync + 'static>(&mut self, window: W, size: (u32, u32))
+    fn update(&mut self) -> Result<RendererStatus, RenderError> {
+        if self.state.is_some() {
+            return Ok(RendererStatus::Ready);
+        }
+
+        let Some(initialization) = self.initialization.as_mut() else {
+            return Ok(RendererStatus::Uninitialized);
+        };
+
+        let mut context = Context::from_waker(Waker::noop());
+
+        match initialization.as_mut().poll(&mut context) {
+            Poll::Pending => Ok(RendererStatus::Initializing),
+            Poll::Ready(result) => {
+                self.initialization = None;
+                self.state = Some(result?);
+
+                Ok(RendererStatus::Ready)
+            },
+        }
+    }
+
+    fn suspend(&mut self) {
+        self.initialization = None;
+    }
+
+    fn create_surface<W: HasDisplayHandle + HasWindowHandle + 'static>(&mut self, window: W, size: (u32, u32))
         -> Result<Self::Surface, RenderError>
     {
         if size.0 == 0 || size.1 == 0 {
             return Err(RenderError::InvalidSurfaceSize);
         }
 
-        let surface = self.instance.create_surface(window)
-            .map_err(|_| RenderError::SurfaceCreation)?;
+        let mut surface = WgpuSurface::new(&self.instance, window, size)?;
 
-        if self.state.is_none() {
-            let adapter = pollster::block_on(self.instance.request_adapter(&RequestAdapterOptions {
-                compatible_surface: Some(&surface), ..Default::default()
-            })).map_err(|_| RenderError::AdapterRequest)?;
-
-            let (device, queue) = pollster::block_on(adapter.request_device(&DeviceDescriptor {
-                label: Some("luzure-wgpu device"), ..Default::default()
-            })).map_err(|_| RenderError::DeviceRequest)?;
-
-            self.state = Some(WgpuRendererState::new(adapter, device, queue));
+        if self.state.is_none() && self.initialization.is_none() {
+            self.initialization = Some(initialize(self.instance.clone(), surface.target()));
         }
 
-        let state = self.state.as_mut()
-            .ok_or(RenderError::DeviceRequest)?;
+        if let Some(state) = &mut self.state {
+            surface.configure(state.adapter(), state.device())?;
+            state.ensure_pipeline(surface.format()
+                .ok_or(RenderError::SurfaceUnsupported)?);
+        }
 
-        let config = surface.get_default_config(state.adapter(), size.0, size.1)
-            .ok_or(RenderError::SurfaceUnsupported)?;
-
-        state.ensure_pipeline(config.format);
-        surface.configure(state.device(), &config);
-
-        Ok(WgpuSurface::new(surface, config))
+        Ok(surface)
     }
 
     fn resize_surface(&mut self, surface: &mut Self::Surface, size: (u32, u32))
@@ -66,10 +86,13 @@ impl Renderer for WgpuRenderer {
             return Ok(());
         }
 
-        let state = self.state.as_ref()
-            .ok_or(RenderError::DeviceRequest)?;
+        surface.set_size(size);
 
-        surface.resize(state.device(), size);
+        if let Some(state) = &mut self.state {
+            surface.configure(state.adapter(), state.device())?;
+            state.ensure_pipeline(surface.format()
+                .ok_or(RenderError::SurfaceUnsupported)?);
+        }
 
         Ok(())
     }
@@ -88,14 +111,24 @@ impl Renderer for WgpuRenderer {
         state.destroy_mesh(mesh)
     }
 
-    fn render(&mut self, surface: &Self::Surface, render_frame: &RenderFrame) -> Result<(), RenderError> {
-        let state = self.state.as_mut()
-            .ok_or(RenderError::DeviceRequest)?;
+    fn render(&mut self, surface: &mut Self::Surface, render_frame: &RenderFrame) -> Result<(), RenderError> {
+        let Some(state) = self.state.as_mut() else {
+            return Ok(());
+        };
+
+        if surface.format().is_none() {
+            surface.configure(state.adapter(), state.device())?;
+        }
+
+        let surface_format = surface.format()
+            .ok_or(RenderError::SurfaceUnsupported)?;
+
+        state.ensure_pipeline(surface_format);
 
         state.update_camera(render_frame.camera_matrices());
         state.update_instances(render_frame.instances())?;
 
-        let pipeline = state.pipeline(surface.format())
+        let pipeline = state.pipeline(surface_format)
             .ok_or(RenderError::PipelineUnavailable)?;
 
         let frame = match surface.surface().get_current_texture() {

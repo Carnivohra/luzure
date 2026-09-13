@@ -6,4 +6,4 @@ mod renderer;
 pub use camera::CameraMatrices;
 pub use mesh::{MeshBatch, MeshDescriptor, MeshHandle, MeshInstance, MeshRender, MeshVertex};
 pub use render::{RenderFrame, RenderScene};
-pub use renderer::Renderer;
+pub use renderer::{Renderer, RendererStatus};

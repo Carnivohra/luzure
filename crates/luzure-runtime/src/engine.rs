@@ -46,7 +46,6 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
         }
 
         self.windows.apply(&mut self.runtime_registry, self.render.renderer_mut(), handle)?;
-        self.render.apply()?;
 
         let render_scene_producer = self.render.start();
         let simulation_task = SimulationTask::new(simulation, render_extraction, render_scene_producer);
@@ -61,9 +60,8 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
             return Err(error);
         }
 
-        self.render.update();
-
-        self.windows.request_redraws(&self.runtime_registry);
+        self.render.update()?;
+        self.windows.request_redraws();
 
         Ok(())
     }
@@ -72,7 +70,6 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
         let thread_error = self.threads.stop();
 
         self.render.stop();
-
         self.windows.destroy_all(&mut self.runtime_registry, handle)?;
 
         if let Some(error) = thread_error {
@@ -91,10 +88,13 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> BackendApplication for Engine<R, G> 
     }
 
     fn resumed<H: BackendHandle>(&mut self, _handle: &mut H) -> Result<(), Self::Error> {
-        Ok(())
+        self.windows.resume_surfaces(self.render.renderer_mut())
     }
 
     fn suspended<H: BackendHandle>(&mut self, _handle: &mut H) -> Result<(), Self::Error> {
+        self.render.suspend();
+        self.windows.suspend_surfaces();
+
         Ok(())
     }
 
@@ -118,9 +118,8 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> BackendApplication for Engine<R, G> 
         }
 
         if let WindowEventKind::RedrawRequested = event.kind {
-            if let Some(surface) = self.windows.surface(event.window_id) {
+            if let Some(surface) = self.windows.surface_mut(event.window_id) {
                 let camera_matrices = CameraMatrices::IDENTITY;
-
                 self.render.render(surface, &camera_matrices)?;
             }
         }

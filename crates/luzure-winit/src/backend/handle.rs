@@ -3,7 +3,7 @@ use winit::{dpi::PhysicalSize, event_loop::ActiveEventLoop, window::WindowAttrib
 
 use crate::window::{WinitWindow, WinitWindowEntry};
 
-use std::sync::Arc;
+use std::rc::Rc;
 
 pub(super) struct WinitBackendHandle<'a> {
     event_loop: &'a ActiveEventLoop,
@@ -30,10 +30,10 @@ impl BackendHandle for WinitBackendHandle<'_> {
         let window = self.event_loop.create_window(attributes)
             .map_err(|_| BackendError::WindowCreation)?;
 
-        let winit_window = Arc::new(WinitWindow::new(window));
+        let winit_window = Rc::new(WinitWindow::new(window));
         let window_id = WindowId::new(self.windows.len() as u64);
 
-        self.windows.push(Some(WinitWindowEntry::new(window_id, Arc::clone(&winit_window))));
+        self.windows.push(Some(WinitWindowEntry::new(window_id, Rc::clone(&winit_window))));
 
         Ok(Window::new(window_id, winit_window))
     }

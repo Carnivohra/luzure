@@ -1,17 +1,17 @@
 use luzure_backend::window::WindowId;
 use winit::window::WindowId as WinitWindowId;
 
-use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::window::WinitWindow;
 
 pub(crate) struct WinitWindowEntry {
     window_id: WindowId,
-    window: Arc<WinitWindow>,
+    window: Rc<WinitWindow>,
 }
 
 impl WinitWindowEntry {
-    pub(crate) const fn new(window_id: WindowId, window: Arc<WinitWindow>) -> Self {
+    pub(crate) const fn new(window_id: WindowId, window: Rc<WinitWindow>) -> Self {
         Self {
             window_id,
             window,
