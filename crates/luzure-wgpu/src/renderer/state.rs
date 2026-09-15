@@ -1,13 +1,16 @@
 use crate::{camera::WgpuCamera, instance::WgpuInstances, mesh::WgpuMesh, pipeline::WgpuPipeline};
 
 use luzure_render::{CameraMatrices, MeshDescriptor, MeshHandle, MeshInstance, render::RenderError};
-use wgpu::{Adapter, BindGroupLayout, Device, Queue, TextureFormat};
+use wgpu::{Adapter, BindGroupLayout, Device, PollType, Queue, TextureFormat};
+
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 
 pub(super) struct WgpuRendererState {
     adapter: Adapter,
     camera: WgpuCamera,
     camera_bind_group_layout: BindGroupLayout,
     device: Device,
+    device_lost: Arc<AtomicBool>,
     instances: WgpuInstances,
     meshes: Vec<Option<WgpuMesh>>,
     pipelines: Vec<(TextureFormat, WgpuPipeline)>,
@@ -18,13 +21,20 @@ impl WgpuRendererState {
     pub(super) fn new(adapter: Adapter, device: Device, queue: Queue) -> Self {
         let camera_bind_group_layout = WgpuCamera::create_bind_group_layout(&device);
         let camera = WgpuCamera::new(&device, &camera_bind_group_layout, &CameraMatrices::IDENTITY);
+        let device_lost = Arc::new(AtomicBool::new(false));
+        let device_lost_callback = Arc::clone(&device_lost);
         let instances = WgpuInstances::new(&device);
+
+        device.set_device_lost_callback(move |_, _| {
+            device_lost_callback.store(true, Ordering::Relaxed);
+        });
 
         Self {
             adapter,
             camera,
             camera_bind_group_layout,
             device,
+            device_lost,
             instances,
             meshes: vec![],
             pipelines: Vec::new(),
@@ -40,6 +50,16 @@ impl WgpuRendererState {
         &self.camera
     }
 
+    pub(super) fn is_lost(&self) -> bool {
+        self.device_lost.load(Ordering::Relaxed)
+    }
+
+    pub(super) fn poll_device_loss(&self) -> bool {
+        let _ = self.device.poll(PollType::Poll);
+
+        self.is_lost()
+    }
+
     pub(super) fn update_camera(&self, camera_matrices: &CameraMatrices) {
         self.camera.update(&self.queue, camera_matrices);
     }
@@ -52,7 +72,7 @@ impl WgpuRendererState {
         &self.instances
     }
 
-    pub(super) fn create_mesh(&mut self, handle: MeshHandle, descriptor: MeshDescriptor) -> Result<(), RenderError> {
+    pub(super) fn create_mesh(&mut self, handle: MeshHandle, descriptor: &MeshDescriptor) -> Result<(), RenderError> {
         let index = usize::try_from(handle.value())
             .map_err(|_| RenderError::InvalidMeshHandle)?;
 
@@ -63,6 +83,21 @@ impl WgpuRendererState {
         let mesh = WgpuMesh::new(&self.device, descriptor)?;
 
         self.meshes.push(Some(mesh));
+
+        Ok(())
+    }
+
+    pub(super) fn restore_meshes(&mut self, descriptors: &[Option<MeshDescriptor>]) -> Result<(), RenderError> {
+        self.meshes.reserve(descriptors.len());
+
+        for descriptor in descriptors {
+            let mesh = match descriptor {
+                Some(descriptor) => Some(WgpuMesh::new(&self.device, descriptor)?),
+                None => None,
+            };
+
+            self.meshes.push(mesh);
+        }
 
         Ok(())
     }

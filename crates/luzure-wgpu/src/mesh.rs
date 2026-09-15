@@ -11,7 +11,7 @@ pub(crate) struct WgpuMesh {
 }
 
 impl WgpuMesh {
-    pub(crate) fn new(device: &Device, descriptor: MeshDescriptor) -> Result<Self, RenderError> {
+    pub(crate) fn new(device: &Device, descriptor: &MeshDescriptor) -> Result<Self, RenderError> {
         if descriptor.vertices().is_empty() || descriptor.indices().is_empty() {
             return Err(RenderError::InvalidMesh);
         }
