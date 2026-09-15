@@ -18,4 +18,4 @@ winit.workspace = true
 winit = { workspace = true, features = ["wayland", "wayland-csd-adwaita", "wayland-dlopen", "x11"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
-winit = { workspace = true, features = ["android-native-activity"] }
+winit = { workspace = true, features = ["android-game-activity"] }
