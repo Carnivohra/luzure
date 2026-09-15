@@ -10,8 +10,8 @@ repository.workspace = true
 
 [features]
 default = ["wgpu", "winit"]
-wgpu = ["dep:luzure-wgpu"]
-winit = ["dep:luzure-winit"]
+wgpu = ["dep:luzure-wgpu", "luzure-app/wgpu"]
+winit = ["dep:luzure-winit", "luzure-app/winit"]
 
 [dependencies]
 luzure-app.workspace = true

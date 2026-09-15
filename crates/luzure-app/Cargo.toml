@@ -8,8 +8,15 @@ license.workspace = true
 readme.workspace = true
 repository.workspace = true
 
+[features]
+default = []
+wgpu = ["dep:luzure-wgpu"]
+winit = ["dep:luzure-winit"]
+
 [dependencies]
 luzure-backend.workspace = true
 luzure-game.workspace = true
 luzure-render.workspace = true
 luzure-runtime.workspace = true
+luzure-wgpu = { workspace = true, optional = true }
+luzure-winit = { workspace = true, optional = true }

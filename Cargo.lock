@@ -717,6 +717,8 @@ dependencies = [
  "luzure-game",
  "luzure-render",
  "luzure-runtime",
+ "luzure-wgpu",
+ "luzure-winit",
 ]
 
 [[package]]

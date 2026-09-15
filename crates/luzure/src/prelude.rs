@@ -12,5 +12,14 @@ pub use luzure_wgpu::WgpuRenderer;
 #[cfg(feature = "winit")]
 pub use luzure_winit::WinitBackend;
 
-#[cfg(all(feature = "winit", target_os = "android"))]
-pub use luzure_winit::AndroidApp;
+#[cfg(all(feature = "wgpu", feature = "winit", target_os = "android"))]
+pub use luzure_app::{AndroidApp, AndroidAppHandle};
+
+#[cfg(all(feature = "wgpu", feature = "winit", not(target_family = "wasm"), not(target_os = "android"), not(target_os = "ios")))]
+pub use luzure_app::DesktopApp;
+
+#[cfg(all(feature = "wgpu", feature = "winit", target_os = "ios"))]
+pub use luzure_app::IosApp;
+
+#[cfg(all(feature = "wgpu", feature = "winit", target_family = "wasm"))]
+pub use luzure_app::WebApp;
