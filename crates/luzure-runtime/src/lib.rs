@@ -1,5 +1,6 @@
 mod backend;
 mod engine;
+mod input;
 pub mod plugin;
 pub mod render;
 pub mod simulation;

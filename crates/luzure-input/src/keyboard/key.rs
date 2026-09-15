@@ -1,4 +1,5 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u8)]
 pub enum KeyboardKey {
     A,
     B,
@@ -118,3 +119,11 @@ pub enum KeyboardKey {
     NumpadDecimal,
     NumpadEnter,
 }
+
+impl KeyboardKey {
+    pub(crate) const fn mask(self) -> u128 {
+        1 << self as u8
+    }
+}
+
+const _: () = assert!((KeyboardKey::NumpadEnter as u8) < u128::BITS as u8);

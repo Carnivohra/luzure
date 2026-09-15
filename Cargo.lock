@@ -766,6 +766,7 @@ dependencies = [
  "luzure-backend",
  "luzure-ecs",
  "luzure-game",
+ "luzure-input",
  "luzure-render",
  "luzure-thread",
  "luzure-world",
