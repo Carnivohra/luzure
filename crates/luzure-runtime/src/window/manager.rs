@@ -21,10 +21,6 @@ impl<S> WindowManager<S> {
         }
     }
 
-    pub(crate) fn entity(&self, window_id: WindowId) -> Option<Entity> {
-        self.targets.get(&window_id).map(WindowTarget::entity)
-    }
-
     pub(crate) fn window_id(&self, entity: Entity) -> Option<WindowId> {
         self.window_ids.get(&entity).copied()
     }
@@ -60,9 +56,10 @@ impl<S> WindowManager<S> {
         let window_id = window.id();
         let (width, height) = window.inner_size();
         let surface = renderer.create_surface(window.clone(), (width, height))?;
+        let visible = descriptor.visible;
 
         registry.insert(entity, WindowState::new(descriptor, width, height))?;
-        self.add(window_id, WindowTarget::new(entity, window, surface));
+        self.add(window_id, WindowTarget::new(entity, window, surface, visible, (width, height)));
 
         Ok(())
     }
@@ -95,7 +92,9 @@ impl<S> WindowManager<S> {
 
     pub(crate) fn request_redraws(&self) {
         for target in self.targets.values() {
-            target.window().request_redraw();
+            if target.should_redraw() {
+                target.window().request_redraw();
+            }
         }
     }
 
@@ -136,16 +135,23 @@ impl<S> WindowManager<S> {
         self.window_ids.insert(entity, window_id);
     }
 
-    pub(crate) fn synchronize(&self, registry: &mut Registry, event: WindowEvent) {
+    pub(crate) fn synchronize(&mut self, registry: &mut Registry, event: WindowEvent) {
         match event.kind {
             WindowEventKind::CloseRequested => return,
             WindowEventKind::RedrawRequested => return,
             _ => {},
         }
 
-        let Some(entity) = self.entity(event.window_id) else {
+        let Some(target) = self.targets.get_mut(&event.window_id) else {
             return;
         };
+        let entity = target.entity();
+
+        match event.kind {
+            WindowEventKind::Resized { width, height } => target.resize(width, height),
+            WindowEventKind::Occluded { occluded } => target.set_occluded(occluded),
+            _ => {},
+        }
 
         let Some(state) = registry.get_mut::<WindowState>(entity) else {
             return;
@@ -154,6 +160,7 @@ impl<S> WindowManager<S> {
         match event.kind {
             WindowEventKind::Resized { width, height } => state.resize(width, height),
             WindowEventKind::Focused { focused } => state.set_focused(focused),
+            WindowEventKind::Occluded { occluded } => state.set_occluded(occluded),
             _ => {},
         }
     }

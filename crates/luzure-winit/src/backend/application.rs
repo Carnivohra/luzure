@@ -70,6 +70,7 @@ impl<A: BackendApplication> ApplicationHandler for WinitApplication<A> {
             WinitWindowEvent::RedrawRequested => WindowEventKind::RedrawRequested,
             WinitWindowEvent::Resized(size) => WindowEventKind::Resized { width: size.width, height: size.height },
             WinitWindowEvent::Focused(focused) => WindowEventKind::Focused { focused },
+            WinitWindowEvent::Occluded(occluded) => WindowEventKind::Occluded { occluded },
             _ => return
         };
 

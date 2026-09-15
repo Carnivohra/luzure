@@ -8,6 +8,7 @@ pub struct WindowState {
     resizable: bool,
     visible: bool,
     focused: bool,
+    occluded: bool,
 }
 
 impl WindowState {
@@ -19,6 +20,7 @@ impl WindowState {
             resizable: descriptor.resizable,
             visible: descriptor.visible,
             focused: false,
+            occluded: false,
         }
     }
 
@@ -46,6 +48,10 @@ impl WindowState {
         self.focused
     }
 
+    pub const fn occluded(&self) -> bool {
+        self.occluded
+    }
+
     pub(super) fn resize(&mut self, width: u32, height: u32) {
         self.width = width;
         self.height = height;
@@ -53,5 +59,9 @@ impl WindowState {
 
     pub(super) fn set_focused(&mut self, focused: bool) {
         self.focused = focused;
+    }
+
+    pub(super) fn set_occluded(&mut self, occluded: bool) {
+        self.occluded = occluded;
     }
 }
