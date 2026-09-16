@@ -795,6 +795,7 @@ name = "luzure-winit"
 version = "0.0.1"
 dependencies = [
  "luzure-backend",
+ "luzure-input",
  "raw-window-handle",
  "winit",
 ]

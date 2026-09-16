@@ -7,9 +7,7 @@ pub(crate) struct InputRuntime {
 
 impl InputRuntime {
     pub(crate) const fn new() -> Self {
-        Self {
-            state: InputState::new(),
-        }
+        Self { state: InputState::new() }
     }
 
     pub(crate) fn update(&mut self, event: InputEvent) {
@@ -20,9 +18,10 @@ impl InputRuntime {
             InputEvent::KeyboardKeyPressed { key, .. } => self.state.press_key(key),
             InputEvent::KeyboardKeyReleased { key, .. } => self.state.release_key(key),
             InputEvent::MouseButtonPressed { button, .. } => self.state.press_mouse_button(button),
-            InputEvent::MouseButtonReleased { button, .. } => {
-                self.state.release_mouse_button(button)
-            }
+            InputEvent::MouseButtonReleased { button, .. } => { self.state.release_mouse_button(button) }
+            InputEvent::MouseMotion { x, y } => self.state.add_mouse_motion(x, y),
+            InputEvent::MouseWheelLines { x, y, .. } => self.state.add_scroll_lines(x, y),
+            InputEvent::MouseWheelPixels { x, y, .. } => self.state.add_scroll_pixels(x, y),
         }
     }
 

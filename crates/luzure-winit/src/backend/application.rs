@@ -1,7 +1,7 @@
 use luzure_backend::{backend::BackendApplication, window::{WindowEvent, WindowEventKind}};
-use winit::{application::ApplicationHandler, event::WindowEvent as WinitWindowEvent, event_loop::ActiveEventLoop, window::WindowId as WinitWindowId};
+use winit::{application::ApplicationHandler, event::{DeviceEvent, DeviceId, WindowEvent as WinitWindowEvent}, event_loop::ActiveEventLoop, window::WindowId as WinitWindowId};
 
-use crate::{backend::WinitBackendHandle, window::WinitWindowEntry};
+use crate::{backend::WinitBackendHandle, input, window::WinitWindowEntry};
 
 pub(super) struct WinitApplication<A: BackendApplication> {
     application: A,
@@ -65,6 +65,10 @@ impl<A: BackendApplication> ApplicationHandler for WinitApplication<A> {
             .find(|window| window.winit_id() == winit_window_id)
             .map(WinitWindowEntry::window_id) else { return };
 
+        if let Some(event) = input::window_event(window_id, &winit_event) {
+            return self.application.input_event(event);
+        }
+
         let kind = match winit_event {
             WinitWindowEvent::CloseRequested => WindowEventKind::CloseRequested,
             WinitWindowEvent::RedrawRequested => WindowEventKind::RedrawRequested,
@@ -81,6 +85,12 @@ impl<A: BackendApplication> ApplicationHandler for WinitApplication<A> {
         if let Err(error) = self.application.window_event(&mut handle, event) {
             self.error = Some(error);
             event_loop.exit();
+        }
+    }
+
+    fn device_event(&mut self, _event_loop: &ActiveEventLoop, _device_id: DeviceId, winit_event: DeviceEvent) {
+        if let Some(event) = input::device_event(&winit_event) {
+            self.application.input_event(event);
         }
     }
 
