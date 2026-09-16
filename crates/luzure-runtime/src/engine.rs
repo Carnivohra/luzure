@@ -110,9 +110,13 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> BackendApplication for Engine<R, G> 
         self.input.update(event);
     }
 
-    fn window_event<H: BackendHandle>(&mut self, _handle: &mut H, event: WindowEvent)
+    fn window_event<H: BackendHandle>(&mut self, handle: &mut H, event: WindowEvent)
         -> Result<(), Self::Error>
     {
+        if let WindowEventKind::CloseRequested = event.kind {
+            return self.windows.close_requested(&mut self.runtime_registry, handle, event.window_id);
+        }
+
         self.windows.synchronize(&mut self.runtime_registry, event);
 
         if let WindowEventKind::Focused { focused: false } = event.kind {

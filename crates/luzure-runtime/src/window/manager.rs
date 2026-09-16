@@ -4,7 +4,7 @@ use luzure_render::Renderer;
 
 use std::collections::HashMap;
 
-use crate::{runtime::RuntimeError, window::{WindowPlan, WindowState, WindowTarget}};
+use crate::{runtime::RuntimeError, window::{PrimaryWindow, WindowPlan, WindowState, WindowTarget}};
 
 pub(crate) struct WindowManager<S> {
     plan: WindowPlan,
@@ -88,6 +88,21 @@ impl<S> WindowManager<S> {
         }
 
         Ok(())
+    }
+
+    pub(crate) fn close_requested<H: BackendHandle>(&mut self, registry: &mut Registry, handle: &mut H, window_id: WindowId)
+        -> Result<(), RuntimeError>
+    {
+        let target = self.targets.get(&window_id)
+            .ok_or(BackendError::InvalidWindow)?;
+        let window = target.entity();
+
+        if self.targets.len() == 1 || registry.contains_component::<PrimaryWindow>(window) {
+            handle.exit()?;
+            return Ok(());
+        }
+
+        self.destroy(registry, handle, window)
     }
 
     pub(crate) fn request_redraws(&self) {
