@@ -1,11 +1,13 @@
-use luzure_render::{CameraMatrices, Renderer, RendererStatus, render::RenderError};
+use luzure_ecs::Registry;
+use luzure_render::{RenderTarget, RenderView, Renderer, RendererStatus, render::RenderError};
 
-use super::{RenderPlan, RenderSceneConsumer, RenderSceneProducer, render_scene_buffer};
+use super::{RenderPlan, RenderSceneConsumer, RenderSceneProducer, extract_cameras, render_scene_buffer};
 
 pub(crate) struct RenderRuntime<R: Renderer> {
     plan: RenderPlan,
     renderer: R,
     scenes: Option<RenderSceneConsumer>,
+    views: Vec<RenderView>,
 }
 
 impl<R: Renderer> RenderRuntime<R> {
@@ -14,6 +16,7 @@ impl<R: Renderer> RenderRuntime<R> {
             plan: RenderPlan::new(),
             renderer,
             scenes: None,
+            views: Vec::new(),
         }
     }
 
@@ -30,7 +33,7 @@ impl<R: Renderer> RenderRuntime<R> {
         producer
     }
 
-    pub(crate) fn update(&mut self) -> Result<(), RenderError> {
+    pub(crate) fn update(&mut self, registry: &Registry) -> Result<(), RenderError> {
         if self.renderer.update()? == RendererStatus::Ready {
             self.plan.apply(&mut self.renderer)?;
         }
@@ -38,6 +41,8 @@ impl<R: Renderer> RenderRuntime<R> {
         if let Some(scenes) = &mut self.scenes {
             scenes.refresh();
         }
+
+        extract_cameras(registry, &mut self.views);
 
         Ok(())
     }
@@ -48,14 +53,23 @@ impl<R: Renderer> RenderRuntime<R> {
         self.renderer.resize_surface(surface, size)
     }
 
-    pub(crate) fn render(&mut self, surface: &mut R::Surface, camera_matrices: &CameraMatrices)
+    pub(crate) fn render(&mut self, surface: &mut R::Surface, target: RenderTarget)
         -> Result<(), RenderError>
     {
         let Some(scenes) = &self.scenes else {
             return Ok(());
         };
 
-        let frame = scenes.current().frame(camera_matrices);
+        let target = target.value();
+        let first = self.views.partition_point(|view| view.target().value() < target);
+        let count = self.views[first..].partition_point(|view| view.target().value() == target);
+
+        if count == 0 {
+            return Ok(());
+        }
+
+        let scene = scenes.current();
+        let frame = scene.frame(&self.views[first..first + count]);
 
         self.renderer.render(surface, &frame)
     }

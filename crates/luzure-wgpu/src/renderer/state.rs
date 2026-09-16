@@ -1,6 +1,6 @@
 use crate::{camera::WgpuCamera, instance::WgpuInstances, mesh::WgpuMesh, pipeline::WgpuPipeline};
 
-use luzure_render::{CameraMatrices, MeshDescriptor, MeshHandle, MeshInstance, render::RenderError};
+use luzure_render::{MeshDescriptor, MeshHandle, MeshInstance, RenderView, render::RenderError};
 use wgpu::{Adapter, BindGroupLayout, Device, PollType, Queue, TextureFormat};
 
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
@@ -20,7 +20,7 @@ pub(super) struct WgpuRendererState {
 impl WgpuRendererState {
     pub(super) fn new(adapter: Adapter, device: Device, queue: Queue) -> Self {
         let camera_bind_group_layout = WgpuCamera::create_bind_group_layout(&device);
-        let camera = WgpuCamera::new(&device, &camera_bind_group_layout, &CameraMatrices::IDENTITY);
+        let camera = WgpuCamera::new(&device, &camera_bind_group_layout);
         let device_lost = Arc::new(AtomicBool::new(false));
         let device_lost_callback = Arc::clone(&device_lost);
         let instances = WgpuInstances::new(&device);
@@ -60,8 +60,8 @@ impl WgpuRendererState {
         self.is_lost()
     }
 
-    pub(super) fn update_camera(&self, camera_matrices: &CameraMatrices) {
-        self.camera.update(&self.queue, camera_matrices);
+    pub(super) fn update_cameras(&mut self, views: &[RenderView]) -> Result<(), RenderError> {
+        self.camera.update(&self.device, &self.queue, &self.camera_bind_group_layout, views)
     }
 
     pub(super) fn update_instances(&mut self, instances: &[MeshInstance]) -> Result<(), RenderError> {

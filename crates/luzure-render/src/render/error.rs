@@ -23,8 +23,8 @@ pub enum RenderError {
     #[error("render instance data exceeds supported capacity")]
     InstanceCapacityExceeded,
 
-    #[error("render mesh batch references an invalid instance range")]
-    InvalidInstanceRange,
+    #[error("render view data exceeds supported capacity")]
+    ViewCapacityExceeded,
 
     #[error("render pipeline is not available for the surface format")]
     PipelineUnavailable,

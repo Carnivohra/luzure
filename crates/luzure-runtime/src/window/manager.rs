@@ -1,10 +1,10 @@
 use luzure_backend::{backend::{BackendError, BackendHandle}, window::{WindowDescriptor, WindowEvent, WindowEventKind, WindowId}};
 use luzure_ecs::{Entity, Registry};
-use luzure_render::Renderer;
+use luzure_render::{RenderTarget, Renderer};
 
 use std::collections::HashMap;
 
-use crate::{runtime::RuntimeError, window::{PrimaryWindow, WindowPlan, WindowState, WindowTarget}};
+use crate::{render::render_target, runtime::RuntimeError, window::{PrimaryWindow, WindowPlan, WindowState, WindowTarget}};
 
 pub(crate) struct WindowManager<S> {
     plan: WindowPlan,
@@ -138,6 +138,14 @@ impl<S> WindowManager<S> {
 
     pub(crate) fn surface_mut(&mut self, window_id: WindowId) -> Option<&mut S> {
         self.targets.get_mut(&window_id)?.surface_mut()
+    }
+
+    pub(crate) fn render_target_mut(&mut self, window_id: WindowId) -> Option<(RenderTarget, &mut S)> {
+        let target = self.targets.get_mut(&window_id)?;
+        let render_target = render_target(target.entity());
+        let surface = target.surface_mut()?;
+
+        Some((render_target, surface))
     }
 
     pub(crate) fn add(&mut self, window_id: WindowId, target: WindowTarget<S>) {

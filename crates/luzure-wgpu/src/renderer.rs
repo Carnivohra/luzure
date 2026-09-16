@@ -8,7 +8,7 @@ use luzure_render::{MeshDescriptor, MeshHandle, Renderer, RendererStatus, render
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 use wgpu::{Color, CommandEncoderDescriptor, CurrentSurfaceTexture, Instance, InstanceDescriptor, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor, StoreOp, TextureViewDescriptor};
 
-use crate::WgpuSurface;
+use crate::{WgpuSurface, viewport::WgpuViewport};
 
 use std::task::{Context, Poll, Waker};
 
@@ -175,7 +175,7 @@ impl Renderer for WgpuRenderer {
         let surface_format = surface.format()
             .ok_or(RenderError::SurfaceUnsupported)?;
 
-        state.update_camera(render_frame.camera_matrices());
+        state.update_cameras(render_frame.views())?;
         state.update_instances(render_frame.instances())?;
 
         let pipeline = state.pipeline(surface_format)
@@ -221,33 +221,30 @@ impl Renderer for WgpuRenderer {
         });
 
         pass.set_pipeline(pipeline.pipeline());
-        pass.set_bind_group(0, state.camera().bind_group(), &[]);
 
         if !render_frame.mesh_batches().is_empty() {
             pass.set_vertex_buffer(1, state.instances().buffer().slice(..));
         }
 
-        for batch in render_frame.mesh_batches() {
-            let mesh = state.mesh(batch.mesh())
-                .ok_or(RenderError::InvalidMeshHandle)?;
-            let first_instance = batch.first_instance();
-            let instance_count = batch.instance_count();
-            let end_instance = first_instance.checked_add(instance_count)
-                .ok_or(RenderError::InvalidInstanceRange)?;
-            let end_index = usize::try_from(end_instance)
-                .map_err(|_| RenderError::InvalidInstanceRange)?;
-
-            if end_index > render_frame.instances().len() {
-                return Err(RenderError::InvalidInstanceRange);
-            }
-
-            if instance_count == 0 {
+        for (view_index, view) in render_frame.views().iter().enumerate() {
+            let Some(viewport) = WgpuViewport::new(view.viewport(), surface.size()) else {
                 continue;
-            }
+            };
+            let camera_offset = state.camera().dynamic_offset(view_index)?;
 
-            pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
-            pass.set_index_buffer(mesh.index_buffer().slice(..), mesh.index_format());
-            pass.draw_indexed(0..mesh.index_count(), 0, first_instance..end_instance);
+            viewport.apply(&mut pass);
+            pass.set_bind_group(0, state.camera().bind_group(), &[camera_offset]);
+
+            for batch in render_frame.mesh_batches() {
+                let mesh = state.mesh(batch.mesh())
+                    .ok_or(RenderError::InvalidMeshHandle)?;
+                let first_instance = batch.first_instance();
+                let end_instance = first_instance + batch.instance_count();
+
+                pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
+                pass.set_index_buffer(mesh.index_buffer().slice(..), mesh.index_format());
+                pass.draw_indexed(0..mesh.index_count(), 0, first_instance..end_instance);
+            }
         }
 
         drop(pass);

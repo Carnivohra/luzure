@@ -1,4 +1,4 @@
-use crate::{CameraMatrices, MeshBatch, MeshHandle, MeshInstance};
+use crate::{MeshBatch, MeshHandle, MeshInstance, RenderView};
 
 use super::{RenderError, RenderFrame};
 
@@ -79,9 +79,9 @@ impl RenderScene {
         &self.mesh_batches
     }
 
-    pub fn frame<'a>(&'a self, camera_matrices: &'a CameraMatrices) -> RenderFrame<'a> {
+    pub fn frame<'a>(&'a self, views: &'a [RenderView]) -> RenderFrame<'a> {
         RenderFrame::new(
-            camera_matrices,
+            views,
             &self.instances,
             &self.mesh_batches,
         )

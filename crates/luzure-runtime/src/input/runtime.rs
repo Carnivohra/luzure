@@ -25,6 +25,10 @@ impl InputRuntime {
         }
     }
 
+    pub(crate) const fn state(&self) -> &InputState {
+        &self.state
+    }
+
     pub(crate) fn release_all(&mut self) {
         self.state.release_all();
     }

@@ -1,9 +1,10 @@
 pub use luzure_app::App;
 pub use luzure_backend::{Backend, Window};
 pub use luzure_game::{Game, GameMetadata};
+pub use luzure_input::{input::InputState, keyboard::KeyboardKey, mouse::MouseButton};
 pub use luzure_math::{Mat4, Vec2, Vec3};
-pub use luzure_render::{CameraMatrices, RenderFrame, Renderer};
-pub use luzure_runtime::{Plugin, PluginContext, ThreadMode, runtime::RuntimeError};
+pub use luzure_render::{CameraMatrices, RenderFrame, Renderer, Viewport};
+pub use luzure_runtime::{CameraView, FrameTime, MainContext, MainSystem, Plugin, PluginContext, ThreadMode, runtime::RuntimeError};
 pub use luzure_world::{Camera, Transform, World};
 
 #[cfg(feature = "wgpu")]

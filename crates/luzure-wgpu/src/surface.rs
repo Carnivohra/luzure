@@ -58,6 +58,10 @@ impl WgpuSurface {
         self.size = size;
     }
 
+    pub(crate) const fn size(&self) -> (u32, u32) {
+        self.size
+    }
+
     pub(crate) fn configure(&mut self, adapter: &Adapter, device: &Device, device_generation: u64)
         -> Result<(), RenderError>
     {

@@ -37,6 +37,10 @@ impl<'a> SimulationContext<'a> {
         self.simulation.world_mut().registry_mut().spawn_bundle(bundle)
     }
 
+    pub fn spawn_component<T: Send + Sync + 'static>(&mut self, component: T) -> Entity {
+        self.simulation.world_mut().registry_mut().spawn(component)
+    }
+
     pub fn add_startup_system(&mut self, system: StartupSystem) {
         self.simulation.startup_schedule_mut().add_system(system);
     }
