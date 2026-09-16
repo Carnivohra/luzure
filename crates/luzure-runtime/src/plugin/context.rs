@@ -2,7 +2,7 @@ use luzure_ecs::Registry;
 use luzure_game::GameMetadata;
 
 use crate::backend::BackendContext;
-use crate::main_thread::{MainContext, MainSchedule};
+use crate::main::{MainContext, MainSchedule};
 use crate::render::{RenderContext, RenderExtraction, RenderPlan};
 use crate::simulation::{Simulation, SimulationContext, SimulationPlan};
 use crate::window::WindowPlan;

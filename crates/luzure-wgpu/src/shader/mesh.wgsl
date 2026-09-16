@@ -17,6 +17,7 @@ struct VertexInput {
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
+    @location(0) normal: vec3<f32>,
 }
 
 @vertex
@@ -24,10 +25,16 @@ fn vertex(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;
     let model = mat4x4<f32>(input.model_0, input.model_1, input.model_2, input.model_3);
     output.position = camera.view_projection * model * vec4<f32>(input.position, 1.0);
+    output.normal = (model * vec4<f32>(input.normal, 0.0)).xyz;
     return output;
 }
 
 @fragment
-fn fragment() -> @location(0) vec4<f32> {
-    return vec4<f32>(1.0, 1.0, 1.0, 1.0);
+fn fragment(input: VertexOutput) -> @location(0) vec4<f32> {
+    let normal = normalize(input.normal);
+    let light_direction = vec3<f32>(0.2981424, 0.5962848, 0.7453560);
+    let light = 0.25 + max(dot(normal, light_direction), 0.0) * 0.75;
+    let color = abs(normal) * 0.55 + vec3<f32>(0.25);
+
+    return vec4<f32>(color * light, 1.0);
 }

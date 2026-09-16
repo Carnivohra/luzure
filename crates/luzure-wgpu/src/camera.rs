@@ -3,7 +3,7 @@ mod uniform;
 use uniform::CameraUniform;
 
 use bytemuck::bytes_of;
-use luzure_render::{RenderView, render::RenderError};
+use luzure_render::{MeshPipelineContract, RenderView, render::RenderError};
 
 use std::mem::size_of;
 
@@ -22,8 +22,8 @@ impl WgpuCamera {
         device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("luzure-wgpu camera bind group layout"),
             entries: &[BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::VERTEX,
+                binding: MeshPipelineContract::CAMERA_BINDING,
+                visibility: ShaderStages::VERTEX_FRAGMENT,
                 ty: BindingType::Buffer {
                     ty: BufferBindingType::Uniform,
                     has_dynamic_offset: true,
@@ -105,7 +105,7 @@ impl WgpuCamera {
             label: Some("luzure-wgpu camera bind group"),
             layout: bind_group_layout,
             entries: &[BindGroupEntry {
-                binding: 0,
+                binding: MeshPipelineContract::CAMERA_BINDING,
                 resource: BindingResource::Buffer(BufferBinding {
                     buffer,
                     offset: 0,

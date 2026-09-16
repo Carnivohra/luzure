@@ -39,6 +39,30 @@ impl Mat4 {
         ])
     }
 
+    pub fn look_at_rh(eye: Vec3, target: Vec3, up: Vec3) -> Self {
+        let forward = (target - eye).normalize();
+        let right = forward.cross(up).normalize();
+        let up = right.cross(forward);
+
+        Self::new([
+            [right.x, up.x, -forward.x, 0.0],
+            [right.y, up.y, -forward.y, 0.0],
+            [right.z, up.z, -forward.z, 0.0],
+            [-right.dot(eye), -up.dot(eye), forward.dot(eye), 1.0],
+        ])
+    }
+
+    pub fn perspective_rh_zo(field_of_view_y: f32, aspect_ratio: f32, near: f32, far: f32) -> Self {
+        let focal_length = (field_of_view_y * 0.5).tan().recip();
+
+        Self::new([
+            [focal_length / aspect_ratio, 0.0, 0.0, 0.0],
+            [0.0, focal_length, 0.0, 0.0],
+            [0.0, 0.0, far / (near - far), -1.0],
+            [0.0, 0.0, near * far / (near - far), 0.0],
+        ])
+    }
+
     pub const fn columns(&self) -> &[[f32; 4]; 4] {
         &self.columns
     }

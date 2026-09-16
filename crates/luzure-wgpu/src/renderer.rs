@@ -6,7 +6,7 @@ use state::WgpuRendererState;
 
 use luzure_render::{MeshDescriptor, MeshHandle, Renderer, RendererStatus, render::{RenderError, RenderFrame}};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
-use wgpu::{Color, CommandEncoderDescriptor, CurrentSurfaceTexture, Instance, InstanceDescriptor, LoadOp, Operations, RenderPassColorAttachment, RenderPassDescriptor, StoreOp, TextureViewDescriptor};
+use wgpu::{Color, CommandEncoderDescriptor, CurrentSurfaceTexture, Instance, InstanceDescriptor, LoadOp, Operations, RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, StoreOp, TextureViewDescriptor};
 
 use crate::{WgpuSurface, viewport::WgpuViewport};
 
@@ -208,6 +208,8 @@ impl Renderer for WgpuRenderer {
         };
 
         let view = frame.texture.create_view(&TextureViewDescriptor::default());
+        let depth = surface.depth()
+            .ok_or(RenderError::SurfaceUnsupported)?;
         let mut encoder = state.device().create_command_encoder(&CommandEncoderDescriptor {
             label: Some("luzure-wgpu frame encoder"),
         });
@@ -217,7 +219,14 @@ impl Renderer for WgpuRenderer {
                 view: &view, depth_slice: None, resolve_target: None, ops: Operations {
                     load: LoadOp::Clear(Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }), store: StoreOp::Store
                 },
-            })], ..Default::default()
+            })], depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
+                view: depth.view(),
+                depth_ops: Some(Operations {
+                    load: LoadOp::Clear(1.0),
+                    store: StoreOp::Discard,
+                }),
+                stencil_ops: None,
+            }), ..Default::default()
         });
 
         pass.set_pipeline(pipeline.pipeline());

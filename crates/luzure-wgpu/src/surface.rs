@@ -1,5 +1,7 @@
+mod depth;
 mod target;
 
+pub(crate) use depth::WgpuDepth;
 pub(crate) use target::WgpuSurfaceTarget;
 
 use luzure_render::render::RenderError;
@@ -11,6 +13,7 @@ use std::rc::Rc;
 pub struct WgpuSurface {
     target: Rc<WgpuSurfaceTarget>,
     config: Option<SurfaceConfiguration>,
+    depth: Option<WgpuDepth>,
     device_generation: Option<u64>,
     size: (u32, u32),
 }
@@ -22,6 +25,7 @@ impl WgpuSurface {
         Ok(Self {
             target: Rc::new(WgpuSurfaceTarget::new(instance, window)?),
             config: None,
+            depth: None,
             device_generation: None,
             size,
         })
@@ -41,6 +45,7 @@ impl WgpuSurface {
 
         target.recreate(instance)?;
         self.config = None;
+        self.depth = None;
         self.device_generation = None;
 
         Ok(())
@@ -62,6 +67,10 @@ impl WgpuSurface {
         self.size
     }
 
+    pub(crate) fn depth(&self) -> Option<&WgpuDepth> {
+        self.depth.as_ref()
+    }
+
     pub(crate) fn configure(&mut self, adapter: &Adapter, device: &Device, device_generation: u64)
         -> Result<(), RenderError>
     {
@@ -70,6 +79,7 @@ impl WgpuSurface {
 
         self.surface().configure(device, &config);
         self.config = Some(config);
+        self.depth = Some(WgpuDepth::new(device, self.size));
         self.device_generation = Some(device_generation);
 
         Ok(())

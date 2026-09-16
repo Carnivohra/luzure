@@ -2,7 +2,7 @@ use luzure_backend::{backend::{BackendApplication, BackendHandle}, input::InputE
 use luzure_game::Game;
 use luzure_render::Renderer;
 
-use crate::{input::InputRuntime, main_thread::MainRuntime, plugin::{Plugin, PluginContext}, render::{RenderExtraction, RenderRuntime}, runtime::RuntimeError, simulation::{Simulation, SimulationRuntime, SimulationTask}, window::WindowManager};
+use crate::{input::InputRuntime, main::MainRuntime, plugin::{Plugin, PluginContext}, render::{RenderExtraction, RenderRuntime}, runtime::RuntimeError, simulation::{Simulation, SimulationRuntime, SimulationTask}, window::WindowManager};
 
 pub struct Engine<R: Renderer, G: Game<Plugins: Plugin>> {
     input: InputRuntime,

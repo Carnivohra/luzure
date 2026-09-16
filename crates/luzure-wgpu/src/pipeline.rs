@@ -1,11 +1,12 @@
-use crate::shader::MESH_SOURCE;
+use crate::{shader::MESH_SOURCE, surface::WgpuDepth};
 
-use luzure_render::{MeshInstance, MeshVertex};
+use luzure_render::{MeshInstance, MeshPipelineContract, MeshVertex};
 use std::mem::size_of;
 use wgpu::{
-    BindGroupLayout, BlendState, ColorTargetState, ColorWrites, Device, FragmentState,
+    BindGroupLayout, BlendState, ColorTargetState, ColorWrites, CompareFunction, DepthBiasState,
+    DepthStencilState, Device, FragmentState,
     MultisampleState, PipelineCompilationOptions, PipelineLayoutDescriptor, PrimitiveState,
-    RenderPipeline, RenderPipelineDescriptor, ShaderModuleDescriptor, ShaderSource, TextureFormat,
+    RenderPipeline, RenderPipelineDescriptor, ShaderModuleDescriptor, ShaderSource, StencilState, TextureFormat,
     VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
 };
 
@@ -13,17 +14,17 @@ const VERTEX_ATTRIBUTES: [VertexAttribute; 3] = [
     VertexAttribute {
         format: VertexFormat::Float32x3,
         offset: 0,
-        shader_location: 0,
+        shader_location: MeshPipelineContract::POSITION_LOCATION,
     },
     VertexAttribute {
         format: VertexFormat::Float32x3,
         offset: size_of::<[f32; 3]>() as u64,
-        shader_location: 1,
+        shader_location: MeshPipelineContract::NORMAL_LOCATION,
     },
     VertexAttribute {
         format: VertexFormat::Float32x2,
         offset: size_of::<[f32; 6]>() as u64,
-        shader_location: 2,
+        shader_location: MeshPipelineContract::TEXTURE_COORDINATE_LOCATION,
     },
 ];
 
@@ -31,22 +32,22 @@ const INSTANCE_ATTRIBUTES: [VertexAttribute; 4] = [
     VertexAttribute {
         format: VertexFormat::Float32x4,
         offset: 0,
-        shader_location: 3,
+        shader_location: MeshPipelineContract::MODEL_COLUMN_0_LOCATION,
     },
     VertexAttribute {
         format: VertexFormat::Float32x4,
         offset: size_of::<[f32; 4]>() as u64,
-        shader_location: 4,
+        shader_location: MeshPipelineContract::MODEL_COLUMN_1_LOCATION,
     },
     VertexAttribute {
         format: VertexFormat::Float32x4,
         offset: size_of::<[f32; 8]>() as u64,
-        shader_location: 5,
+        shader_location: MeshPipelineContract::MODEL_COLUMN_2_LOCATION,
     },
     VertexAttribute {
         format: VertexFormat::Float32x4,
         offset: size_of::<[f32; 12]>() as u64,
-        shader_location: 6,
+        shader_location: MeshPipelineContract::MODEL_COLUMN_3_LOCATION,
     },
 ];
 
@@ -77,7 +78,7 @@ impl WgpuPipeline {
                 layout: Some(&layout),
                 vertex: VertexState {
                     module: &shader,
-                    entry_point: Some("vertex"),
+                    entry_point: Some(MeshPipelineContract::VERTEX_ENTRY),
                     compilation_options: PipelineCompilationOptions::default(),
                     buffers: &[
                         Some(VertexBufferLayout {
@@ -93,11 +94,17 @@ impl WgpuPipeline {
                     ],
                 },
                 primitive: PrimitiveState::default(),
-                depth_stencil: None,
+                depth_stencil: Some(DepthStencilState {
+                    format: WgpuDepth::FORMAT,
+                    depth_write_enabled: Some(true),
+                    depth_compare: Some(CompareFunction::Less),
+                    stencil: StencilState::default(),
+                    bias: DepthBiasState::default(),
+                }),
                 multisample: MultisampleState::default(),
                 fragment: Some(FragmentState {
                     module: &shader,
-                    entry_point: Some("fragment"),
+                    entry_point: Some(MeshPipelineContract::FRAGMENT_ENTRY),
                     compilation_options: PipelineCompilationOptions::default(),
                     targets: &[Some(ColorTargetState {
                         format: surface_format,
