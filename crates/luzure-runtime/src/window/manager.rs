@@ -25,6 +25,12 @@ impl<S> WindowManager<S> {
         self.window_ids.get(&entity).copied()
     }
 
+    pub(crate) fn focused_window(&self, registry: &Registry) -> Option<WindowId> {
+        registry.query::<WindowState>()
+            .find(|(_, state)| state.focused())
+            .and_then(|(entity, _)| self.window_id(entity))
+    }
+
     pub(crate) const fn plan_mut(&mut self) -> &mut WindowPlan {
         &mut self.plan
     }
@@ -34,9 +40,19 @@ impl<S> WindowManager<S> {
     {
         let mut plan = std::mem::replace(&mut self.plan, WindowPlan::new());
 
-        for (window, descriptor) in plan.creates() {
-            self.create(registry, renderer, handle, window, descriptor)?;
+        let mut creates = plan.creates();
+
+        while let Some((window, descriptor)) = creates.next() {
+            if let Err(error) = self.create(registry, renderer, handle, window, descriptor) {
+                for (window, _) in creates {
+                    registry.despawn(window);
+                }
+
+                return Err(error);
+            }
         }
+
+        drop(creates);
 
         for window in plan.destroys() {
             self.destroy(registry, handle, window)?;
@@ -52,13 +68,34 @@ impl<S> WindowManager<S> {
             return Err(BackendError::InvalidWindow.into());
         }
 
-        let window = handle.create_window(descriptor.clone())?;
+        let window = match handle.create_window(descriptor.clone()) {
+            Ok(window) => window,
+            Err(error) => {
+                registry.despawn(entity);
+                return Err(error.into());
+            },
+        };
         let window_id = window.id();
         let (width, height) = window.inner_size();
-        let surface = renderer.create_surface(window.clone(), (width, height))?;
+        let surface = if width > 0 && height > 0 {
+            match renderer.create_surface(window.clone(), (width, height)) {
+                Ok(surface) => Some(surface),
+                Err(error) => {
+                    let _ = handle.destroy_window(window_id);
+                    registry.despawn(entity);
+                    return Err(error.into());
+                },
+            }
+        } else {
+            None
+        };
         let visible = descriptor.visible;
 
-        registry.insert(entity, WindowState::new(descriptor, width, height))?;
+        if let Err(error) = registry.insert(entity, WindowState::new(descriptor, width, height)) {
+            drop(surface);
+            let _ = handle.destroy_window(window_id);
+            return Err(error.into());
+        }
         self.add(window_id, WindowTarget::new(entity, window, surface, visible, (width, height)));
 
         Ok(())
@@ -70,10 +107,14 @@ impl<S> WindowManager<S> {
         let window_id = self.window_id(entity)
             .ok_or(BackendError::InvalidWindow)?;
 
+        if let Some(target) = self.targets.get_mut(&window_id) {
+            target.suspend();
+        }
+
+        handle.destroy_window(window_id)?;
         self.targets.remove(&window_id);
         self.window_ids.remove(&entity);
         registry.despawn(entity);
-        handle.destroy_window(window_id)?;
 
         Ok(())
     }
@@ -81,13 +122,20 @@ impl<S> WindowManager<S> {
     pub(crate) fn destroy_all<H: BackendHandle>(&mut self, registry: &mut Registry, handle: &mut H)
         -> Result<(), RuntimeError>
     {
+        let mut first_error = None;
+
         for (entity, window_id) in self.window_ids.drain() {
             self.targets.remove(&window_id);
             registry.despawn(entity);
-            handle.destroy_window(window_id)?;
+            if let Err(error) = handle.destroy_window(window_id) {
+                first_error.get_or_insert(error);
+            }
         }
 
-        Ok(())
+        match first_error {
+            Some(error) => Err(error.into()),
+            None => Ok(()),
+        }
     }
 
     pub(crate) fn close_requested<H: BackendHandle>(&mut self, registry: &mut Registry, handle: &mut H, window_id: WindowId)
@@ -121,8 +169,14 @@ impl<S> WindowManager<S> {
                 continue;
             }
 
-            let window = target.window();
-            let surface = renderer.create_surface(window.clone(), window.inner_size())?;
+            let (width, height) = target.window().inner_size();
+            target.resize(width, height);
+
+            if width == 0 || height == 0 {
+                continue;
+            }
+
+            let surface = renderer.create_surface(target.window().clone(), (width, height))?;
 
             target.set_surface(surface);
         }
@@ -136,12 +190,36 @@ impl<S> WindowManager<S> {
         }
     }
 
-    pub(crate) fn surface_mut(&mut self, window_id: WindowId) -> Option<&mut S> {
-        self.targets.get_mut(&window_id)?.surface_mut()
+    pub(crate) fn resize_surface<R: Renderer<Surface = S>>(&mut self, renderer: &mut R, window_id: WindowId, size: (u32, u32))
+        -> Result<(), RuntimeError>
+    {
+        let Some(target) = self.targets.get_mut(&window_id) else {
+            return Ok(());
+        };
+
+        target.resize(size.0, size.1);
+
+        if size.0 == 0 || size.1 == 0 {
+            return Ok(());
+        }
+
+        if let Some(surface) = target.surface_mut() {
+            renderer.resize_surface(surface, size)?;
+        } else {
+            let surface = renderer.create_surface(target.window().clone(), size)?;
+            target.set_surface(surface);
+        }
+
+        Ok(())
     }
 
     pub(crate) fn render_target_mut(&mut self, window_id: WindowId) -> Option<(RenderTarget, &mut S)> {
         let target = self.targets.get_mut(&window_id)?;
+
+        if !target.should_redraw() {
+            return None;
+        }
+
         let render_target = render_target(target.entity());
         let surface = target.surface_mut()?;
 
@@ -170,10 +248,8 @@ impl<S> WindowManager<S> {
         };
         let entity = target.entity();
 
-        match event.kind {
-            WindowEventKind::Resized { width, height } => target.resize(width, height),
-            WindowEventKind::Occluded { occluded } => target.set_occluded(occluded),
-            _ => {},
+        if let WindowEventKind::Occluded { occluded } = event.kind {
+            target.set_occluded(occluded);
         }
 
         let Some(state) = registry.get_mut::<WindowState>(entity) else {

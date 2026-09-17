@@ -1,7 +1,6 @@
-use wgpu::{Device, Extent3d, Texture, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor};
+use wgpu::{Device, Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor};
 
 pub(crate) struct WgpuDepth {
-    _texture: Texture,
     view: TextureView,
 }
 
@@ -25,10 +24,7 @@ impl WgpuDepth {
         });
         let view = texture.create_view(&TextureViewDescriptor::default());
 
-        Self {
-            _texture: texture,
-            view,
-        }
+        Self { view }
     }
 
     pub(crate) const fn view(&self) -> &TextureView {

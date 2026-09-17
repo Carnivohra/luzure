@@ -20,3 +20,6 @@ winit = { workspace = true, features = ["wayland", "wayland-csd-adwaita", "wayla
 
 [target.'cfg(target_os = "android")'.dependencies]
 winit = { workspace = true, features = ["android-game-activity"] }
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+web-sys = { workspace = true, features = ["console"] }

@@ -6,9 +6,9 @@ use state::WgpuRendererState;
 
 use luzure_render::{MeshDescriptor, MeshHandle, Renderer, RendererStatus, render::{RenderError, RenderFrame}};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
-use wgpu::{Color, CommandEncoderDescriptor, CurrentSurfaceTexture, Instance, InstanceDescriptor, LoadOp, Operations, RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, StoreOp, TextureViewDescriptor};
+use wgpu::{CommandEncoderDescriptor, CurrentSurfaceTexture, Instance, InstanceDescriptor, TextureViewDescriptor};
 
-use crate::{WgpuSurface, viewport::WgpuViewport};
+use crate::WgpuSurface;
 
 use std::task::{Context, Poll, Waker};
 
@@ -117,8 +117,13 @@ impl Renderer for WgpuRenderer {
             return Ok(());
         }
 
-        surface.set_size(size);
         self.discard_lost_state();
+
+        if surface.size() == size && surface.device_generation() == Some(self.device_generation) && self.state.is_some() {
+            return Ok(());
+        }
+
+        surface.set_size(size);
 
         if let Some(state) = &mut self.state {
             Self::configure_surface(state, surface, self.device_generation)?;
@@ -172,15 +177,6 @@ impl Renderer for WgpuRenderer {
             Self::configure_surface(state, surface, self.device_generation)?;
         }
 
-        let surface_format = surface.format()
-            .ok_or(RenderError::SurfaceUnsupported)?;
-
-        state.update_cameras(render_frame.views())?;
-        state.update_instances(render_frame.instances())?;
-
-        let pipeline = state.pipeline(surface_format)
-            .ok_or(RenderError::PipelineUnavailable)?;
-
         let (frame, reconfigure) = match surface.surface().get_current_texture() {
             CurrentSurfaceTexture::Success(frame) => (frame, false),
             CurrentSurfaceTexture::Suboptimal(frame) => (frame, true),
@@ -207,6 +203,11 @@ impl Renderer for WgpuRenderer {
             },
         };
 
+        if !render_frame.views().is_empty() {
+            state.update_cameras(render_frame.views())?;
+            state.update_instances(render_frame.instances())?;
+        }
+
         let view = frame.texture.create_view(&TextureViewDescriptor::default());
         let depth = surface.depth()
             .ok_or(RenderError::SurfaceUnsupported)?;
@@ -214,49 +215,8 @@ impl Renderer for WgpuRenderer {
             label: Some("luzure-wgpu frame encoder"),
         });
 
-        let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Some("luzure-wgpu render pass"), color_attachments: &[Some(RenderPassColorAttachment {
-                view: &view, depth_slice: None, resolve_target: None, ops: Operations {
-                    load: LoadOp::Clear(Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }), store: StoreOp::Store
-                },
-            })], depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
-                view: depth.view(),
-                depth_ops: Some(Operations {
-                    load: LoadOp::Clear(1.0),
-                    store: StoreOp::Discard,
-                }),
-                stencil_ops: None,
-            }), ..Default::default()
-        });
+        state.encode(&mut encoder, &view, depth, render_frame)?;
 
-        pass.set_pipeline(pipeline.pipeline());
-
-        if !render_frame.mesh_batches().is_empty() {
-            pass.set_vertex_buffer(1, state.instances().buffer().slice(..));
-        }
-
-        for (view_index, view) in render_frame.views().iter().enumerate() {
-            let Some(viewport) = WgpuViewport::new(view.viewport(), surface.size()) else {
-                continue;
-            };
-            let camera_offset = state.camera().dynamic_offset(view_index)?;
-
-            viewport.apply(&mut pass);
-            pass.set_bind_group(0, state.camera().bind_group(), &[camera_offset]);
-
-            for batch in render_frame.mesh_batches() {
-                let mesh = state.mesh(batch.mesh())
-                    .ok_or(RenderError::InvalidMeshHandle)?;
-                let first_instance = batch.first_instance();
-                let end_instance = first_instance + batch.instance_count();
-
-                pass.set_vertex_buffer(0, mesh.vertex_buffer().slice(..));
-                pass.set_index_buffer(mesh.index_buffer().slice(..), mesh.index_format());
-                pass.draw_indexed(0..mesh.index_count(), 0, first_instance..end_instance);
-            }
-        }
-
-        drop(pass);
         state.queue().submit([encoder.finish()]);
         state.queue().present(frame);
 

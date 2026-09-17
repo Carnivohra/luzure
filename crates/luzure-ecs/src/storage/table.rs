@@ -1,10 +1,14 @@
 mod column;
 mod layout;
+mod row;
 
-pub(crate) use column::{ErasedColumn, ErasedComponent, create_column};
+pub(crate) use column::{ErasedColumn, create_column};
 pub(crate) use layout::ArchetypeLayout;
+use row::TableRow;
 
 use crate::{Entity, component::ComponentId};
+
+use std::collections::HashMap;
 
 pub(crate) type ColumnFactory = fn() -> Box<dyn ErasedColumn>;
 
@@ -12,6 +16,7 @@ pub(crate) struct Table {
     layout: ArchetypeLayout,
     entities: Vec<Entity>,
     columns: Vec<Box<dyn ErasedColumn>>,
+    transitions: HashMap<ComponentId, usize>,
 }
 
 impl Table {
@@ -29,6 +34,7 @@ impl Table {
             layout,
             entities: vec![],
             columns,
+            transitions: HashMap::new(),
         }
     }
 
@@ -38,6 +44,22 @@ impl Table {
 
     pub(crate) fn contains(&self, component_id: ComponentId) -> bool {
         self.layout.contains(component_id)
+    }
+
+    pub(crate) fn transition(&self, component_id: ComponentId) -> Option<usize> {
+        self.transitions.get(&component_id).copied()
+    }
+
+    pub(crate) fn set_transition(&mut self, component_id: ComponentId, target: usize) {
+        self.transitions.insert(component_id, target);
+    }
+
+    pub(crate) fn reserve(&mut self, additional: usize) {
+        self.entities.reserve(additional);
+
+        for column in &mut self.columns {
+            column.reserve(additional);
+        }
     }
 
     pub(crate) fn components<T: Send + Sync + 'static>(&self, component_id: ComponentId) -> Option<&[T]> {
@@ -65,13 +87,10 @@ impl Table {
     }
 
     pub(crate) fn replace<T: Send + Sync + 'static>(&mut self, component_id: ComponentId, row: usize, component: T) -> T {
-        let column = self.layout.column(component_id)
+        let current = self.get_mut::<T>(component_id, row)
             .expect("table component must exist");
 
-        *self.columns[column]
-            .replace(row, Box::new(component))
-            .downcast::<T>()
-            .expect("table component type mismatch")
+        std::mem::replace(current, component)
     }
 
     pub(crate) fn push_component<T: Send + Sync + 'static>(&mut self, component_id: ComponentId, component: T) {
@@ -94,31 +113,35 @@ impl Table {
         row
     }
 
-    pub(crate) fn push(&mut self, entity: Entity, components: Vec<(ComponentId, ErasedComponent)>) -> usize {
-        debug_assert_eq!(components.len(), self.columns.len());
+    pub(crate) fn take<T: Send + Sync + 'static>(&mut self, component_id: ComponentId, row: usize) -> T {
+        let column = self.layout.column(component_id)
+            .expect("table component must exist");
 
-        for (component_id, component) in components {
-            let column = self.layout.column(component_id)
-                .expect("table component must exist");
-
-            self.columns[column].push(component);
-        }
-
-        self.push_entity(entity)
+        self.columns[column].as_any_mut().downcast_mut::<Vec<T>>()
+            .expect("table component type mismatch")
+            .swap_remove(row)
     }
 
-    pub(crate) fn swap_remove(&mut self, row: usize)
-        -> (Entity, Vec<(ComponentId, ErasedComponent)>, Option<Entity>)
-    {
-        let entity = self.entities.swap_remove(row);
-        let moved_entity = self.entities.get(row).copied();
-        let mut components = Vec::with_capacity(self.columns.len());
-
+    pub(crate) fn move_row(&mut self, row: usize, target: &mut Self) -> (usize, Option<Entity>) {
         for (component_id, column) in self.layout.component_ids().iter().copied().zip(&mut self.columns) {
-            components.push((component_id, column.swap_remove(row)));
+            if let Some(target_column) = target.layout.column(component_id) {
+                column.move_component(row, target.columns[target_column].as_mut());
+            }
         }
 
-        (entity, components, moved_entity)
+        let entity = self.entities.swap_remove(row);
+        let moved_entity = self.entities.get(row).copied();
+
+        (target.push_entity(entity), moved_entity)
+    }
+
+    pub(crate) fn remove_entity(&mut self, row: usize) -> Option<Entity> {
+        self.entities.swap_remove(row);
+        self.entities.get(row).copied()
+    }
+
+    pub(crate) fn remove_components(&mut self, row: usize) {
+        TableRow::new(&mut self.columns, row).remove();
     }
 
     pub(crate) fn iter<T: Send + Sync + 'static>(&self, component_id: ComponentId)

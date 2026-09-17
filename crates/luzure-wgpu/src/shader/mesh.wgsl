@@ -24,8 +24,12 @@ struct VertexOutput {
 fn vertex(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;
     let model = mat4x4<f32>(input.model_0, input.model_1, input.model_2, input.model_3);
-    output.position = camera.view_projection * model * vec4<f32>(input.position, 1.0);
-    output.normal = (model * vec4<f32>(input.normal, 0.0)).xyz;
+    output.position = camera.view_projection * (model * vec4<f32>(input.position, 1.0));
+    let normal_0 = cross(input.model_1.xyz, input.model_2.xyz);
+    let normal_1 = cross(input.model_2.xyz, input.model_0.xyz);
+    let normal_2 = cross(input.model_0.xyz, input.model_1.xyz);
+    let orientation = sign(dot(input.model_0.xyz, normal_0));
+    output.normal = (mat3x3<f32>(normal_0, normal_1, normal_2) * input.normal) * orientation;
     return output;
 }
 

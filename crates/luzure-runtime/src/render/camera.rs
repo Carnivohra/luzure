@@ -1,8 +1,7 @@
 use luzure_ecs::Registry;
 use luzure_render::{CameraMatrices, RenderView};
-use luzure_world::Camera;
 
-use crate::render::{CameraView, render_target};
+use crate::{Camera, render::{CameraView, render_target}};
 
 pub(crate) fn extract_cameras(registry: &Registry, views: &mut Vec<RenderView>) {
     views.clear();

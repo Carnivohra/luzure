@@ -38,17 +38,7 @@ impl Registry {
     }
 
     pub fn register<T: Send + Sync + 'static>(&mut self) -> bool {
-        match self.components.entry(TypeId::of::<T>()) {
-            Entry::Occupied(_) => false,
-            Entry::Vacant(entry) => {
-                let index = u32::try_from(self.component_factories.len())
-                    .expect("component capacity exceeded");
-
-                entry.insert(ComponentId::new(index));
-                self.component_factories.push(create_column::<T>);
-                true
-            },
-        }
+        self.register_component::<T>().1
     }
 
     pub fn is_registered<T: 'static>(&self) -> bool {
@@ -82,9 +72,7 @@ impl Registry {
             return Err(RegistryError::EntityNotFound { entity });
         }
 
-        self.register::<T>();
-        let component_id = self.component_id::<T>()
-            .expect("registered component must have an id");
+        let component_id = self.register_component::<T>().0;
 
         let location = self.location(entity)
             .expect("existing entity must have a table location");
@@ -93,20 +81,18 @@ impl Registry {
             return Ok(Some(self.tables[location.table].replace(component_id, location.row, component)));
         }
 
-        let mut component_ids = self.tables[location.table].component_ids().to_vec();
+        let table = self.transition(location.table, component_id);
+        let (source, target) = self.table_pair_mut(location.table, table);
 
-        component_ids.push(component_id);
+        target.reserve(1);
+        target.push_component(component_id, component);
 
-        let table = self.table_or_create(component_ids);
-        let (_, mut components, moved_entity) = self.tables[location.table].swap_remove(location.row);
+        let (row, moved_entity) = source.move_row(location.row, target);
 
         if let Some(moved_entity) = moved_entity {
             self.locations[moved_entity.index() as usize] = Some(location);
         }
 
-        components.push((component_id, Box::new(component)));
-
-        let row = self.tables[table].push(entity, components);
         self.locations[entity.index() as usize] = Some(EntityLocation::new(table, row));
 
         Ok(None)
@@ -120,32 +106,21 @@ impl Registry {
             return None;
         }
 
-        let component_ids = self.tables[location.table].component_ids().iter().copied()
-            .filter(|current_id| *current_id != component_id)
-            .collect();
+        let table = self.transition(location.table, component_id);
+        let (source, target) = self.table_pair_mut(location.table, table);
 
-        let table = self.table_or_create(component_ids);
-        let (_, components, moved_entity) = self.tables[location.table].swap_remove(location.row);
+        target.reserve(1);
+
+        let removed = source.take::<T>(component_id, location.row);
+        let (row, moved_entity) = source.move_row(location.row, target);
 
         if let Some(moved_entity) = moved_entity {
             self.locations[moved_entity.index() as usize] = Some(location);
         }
 
-        let mut removed = None;
-        let mut retained = Vec::with_capacity(components.len().saturating_sub(1));
-
-        for (current_id, component) in components {
-            if current_id == component_id {
-                removed = component.downcast::<T>().ok().map(|component| *component);
-            } else {
-                retained.push((current_id, component));
-            }
-        }
-
-        let row = self.tables[table].push(entity, retained);
         self.locations[entity.index() as usize] = Some(EntityLocation::new(table, row));
 
-        removed
+        Some(removed)
     }
 
     pub fn get<T: Send + Sync + 'static>(&self, entity: Entity) -> Option<&T> {
@@ -294,11 +269,9 @@ impl Registry {
     }
 
     pub fn spawn<T: Send + Sync + 'static>(&mut self, component: T) -> Entity {
-        self.register::<T>();
-        let component_id = self.component_id::<T>()
-            .expect("registered component must have an id");
+        let component_id = self.register_component::<T>().0;
 
-        let table = self.table_or_create(vec![component_id]);
+        let table = self.table_or_create(&mut [component_id]);
 
         self.spawn_in_table(table, |table| table.push_component(component_id, component))
     }
@@ -311,15 +284,10 @@ impl Registry {
         -> Entity {
         assert_ne!(TypeId::of::<A>(), TypeId::of::<B>(), "bundle component types must be unique");
 
-        self.register::<A>();
-        self.register::<B>();
+        let first_id = self.register_component::<A>().0;
+        let second_id = self.register_component::<B>().0;
 
-        let first_id = self.component_id::<A>()
-            .expect("registered component must have an id");
-        let second_id = self.component_id::<B>()
-            .expect("registered component must have an id");
-
-        let table = self.table_or_create(vec![first_id, second_id]);
+        let table = self.table_or_create(&mut [first_id, second_id]);
 
         self.spawn_in_table(table, |table| {
             table.push_component(first_id, first);
@@ -333,18 +301,11 @@ impl Registry {
         assert_ne!(TypeId::of::<A>(), TypeId::of::<C>(), "bundle component types must be unique");
         assert_ne!(TypeId::of::<B>(), TypeId::of::<C>(), "bundle component types must be unique");
 
-        self.register::<A>();
-        self.register::<B>();
-        self.register::<C>();
+        let first_id = self.register_component::<A>().0;
+        let second_id = self.register_component::<B>().0;
+        let third_id = self.register_component::<C>().0;
 
-        let first_id = self.component_id::<A>()
-            .expect("registered component must have an id");
-        let second_id = self.component_id::<B>()
-            .expect("registered component must have an id");
-        let third_id = self.component_id::<C>()
-            .expect("registered component must have an id");
-
-        let table = self.table_or_create(vec![first_id, second_id, third_id]);
+        let table = self.table_or_create(&mut [first_id, second_id, third_id]);
 
         self.spawn_in_table(table, |table| {
             table.push_component(first_id, first);
@@ -366,7 +327,7 @@ impl Registry {
 
     pub fn spawn_empty(&mut self) -> Entity {
         let entity = self.entities.allocate();
-        let row = self.tables[0].push(entity, vec![]);
+        let row = self.tables[0].push_entity(entity);
 
         self.set_location(entity, EntityLocation::new(0, row));
         entity
@@ -377,14 +338,17 @@ impl Registry {
             return false;
         };
 
-        let (_, _, moved_entity) = self.tables[location.table].swap_remove(location.row);
+        let moved_entity = self.tables[location.table].remove_entity(location.row);
 
         if let Some(moved_entity) = moved_entity {
             self.locations[moved_entity.index() as usize] = Some(location);
         }
 
         self.locations[entity.index() as usize] = None;
-        self.entities.release(entity)
+        self.entities.release(entity);
+        self.tables[location.table].remove_components(location.row);
+
+        true
     }
 
     pub fn contains(&self, entity: Entity) -> bool {
@@ -393,6 +357,22 @@ impl Registry {
 
     fn component_id<T: 'static>(&self) -> Option<ComponentId> {
         self.components.get(&TypeId::of::<T>()).copied()
+    }
+
+    fn register_component<T: Send + Sync + 'static>(&mut self) -> (ComponentId, bool) {
+        match self.components.entry(TypeId::of::<T>()) {
+            Entry::Occupied(entry) => (*entry.get(), false),
+            Entry::Vacant(entry) => {
+                let index = u32::try_from(self.component_factories.len())
+                    .expect("component capacity exceeded");
+                let component_id = ComponentId::new(index);
+
+                self.component_factories.push(create_column::<T>);
+                entry.insert(component_id);
+
+                (component_id, true)
+            },
+        }
     }
 
     fn location(&self, entity: Entity) -> Option<EntityLocation> {
@@ -413,18 +393,52 @@ impl Registry {
         self.locations[index] = Some(location);
     }
 
-    fn table_or_create(&mut self, component_ids: Vec<ComponentId>) -> usize {
-        let layout = ArchetypeLayout::new(component_ids);
+    fn table_or_create(&mut self, component_ids: &mut [ComponentId]) -> usize {
+        component_ids.sort_unstable();
 
-        if let Some(table) = self.table_indices.get(&layout) {
+        if let Some(table) = self.table_indices.get(&*component_ids) {
             return *table;
         }
 
+        let layout = ArchetypeLayout::new(component_ids.to_vec());
         let table = self.tables.len();
 
         self.tables.push(Table::new(layout.clone(), &self.component_factories));
         self.table_indices.insert(layout, table);
 
         table
+    }
+
+    fn transition(&mut self, table: usize, component_id: ComponentId) -> usize {
+        if let Some(target) = self.tables[table].transition(component_id) {
+            return target;
+        }
+
+        let mut component_ids = self.tables[table].component_ids().to_vec();
+
+        if let Ok(index) = component_ids.binary_search(&component_id) {
+            component_ids.remove(index);
+        } else {
+            component_ids.push(component_id);
+        }
+
+        let target = self.table_or_create(&mut component_ids);
+
+        self.tables[table].set_transition(component_id, target);
+        self.tables[target].set_transition(component_id, table);
+
+        target
+    }
+
+    fn table_pair_mut(&mut self, first: usize, second: usize) -> (&mut Table, &mut Table) {
+        if first < second {
+            let (left, right) = self.tables.split_at_mut(second);
+
+            (&mut left[first], &mut right[0])
+        } else {
+            let (left, right) = self.tables.split_at_mut(first);
+
+            (&mut right[0], &mut left[second])
+        }
     }
 }

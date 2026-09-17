@@ -767,10 +767,12 @@ dependencies = [
  "luzure-ecs",
  "luzure-game",
  "luzure-input",
+ "luzure-math",
  "luzure-render",
  "luzure-thread",
  "luzure-world",
  "thiserror 2.0.20",
+ "web-time",
 ]
 
 [[package]]
@@ -778,6 +780,7 @@ name = "luzure-thread"
 version = "0.0.1"
 dependencies = [
  "thiserror 2.0.20",
+ "web-time",
 ]
 
 [[package]]
@@ -797,6 +800,7 @@ dependencies = [
  "luzure-backend",
  "luzure-input",
  "raw-window-handle",
+ "web-sys",
  "winit",
 ]
 

@@ -74,12 +74,24 @@ impl WgpuSurface {
     pub(crate) fn configure(&mut self, adapter: &Adapter, device: &Device, device_generation: u64)
         -> Result<(), RenderError>
     {
+        let maximum = device.limits().max_texture_dimension_2d;
+
+        if self.size.0 == 0 || self.size.1 == 0 || self.size.0 > maximum || self.size.1 > maximum {
+            return Err(RenderError::InvalidSurfaceSize);
+        }
+
         let config = self.surface().get_default_config(adapter, self.size.0, self.size.1)
             .ok_or(RenderError::SurfaceUnsupported)?;
 
         self.surface().configure(device, &config);
+
+        if self.device_generation != Some(device_generation) || self.depth.is_none()
+            || self.config.as_ref().is_none_or(|config| (config.width, config.height) != self.size)
+        {
+            self.depth = Some(WgpuDepth::new(device, self.size));
+        }
+
         self.config = Some(config);
-        self.depth = Some(WgpuDepth::new(device, self.size));
         self.device_generation = Some(device_generation);
 
         Ok(())

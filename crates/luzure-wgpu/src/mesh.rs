@@ -12,12 +12,21 @@ pub(crate) struct WgpuMesh {
 
 impl WgpuMesh {
     pub(crate) fn new(device: &Device, descriptor: &MeshDescriptor) -> Result<Self, RenderError> {
-        if descriptor.vertices().is_empty() || descriptor.indices().is_empty() {
+        if descriptor.vertices().is_empty() || descriptor.indices().is_empty()
+            || !descriptor.indices().len().is_multiple_of(3)
+            || descriptor.indices().iter().any(|&index| index as usize >= descriptor.vertices().len())
+        {
             return Err(RenderError::InvalidMesh);
         }
 
         let index_count = u32::try_from(descriptor.indices().len())
             .map_err(|_| RenderError::MeshCapacityExceeded)?;
+
+        let maximum = device.limits().max_buffer_size;
+
+        if size_of_val(descriptor.vertices()) as u64 > maximum || size_of_val(descriptor.indices()) as u64 > maximum {
+            return Err(RenderError::MeshCapacityExceeded);
+        }
 
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("luzure-wgpu mesh vertex buffer"),

@@ -1,13 +1,10 @@
+mod status;
+
+pub use status::RendererStatus;
+
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
 use crate::{MeshDescriptor, MeshHandle, render::{RenderError, RenderFrame}};
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum RendererStatus {
-    Uninitialized,
-    Initializing,
-    Ready,
-}
 
 pub trait Renderer {
     type Surface;

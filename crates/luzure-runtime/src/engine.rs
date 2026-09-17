@@ -5,6 +5,7 @@ use luzure_render::Renderer;
 use crate::{input::InputRuntime, main::MainRuntime, plugin::{Plugin, PluginContext}, render::{RenderExtraction, RenderRuntime}, runtime::RuntimeError, simulation::{Simulation, SimulationRuntime, SimulationTask}, window::WindowManager};
 
 pub struct Engine<R: Renderer, G: Game<Plugins: Plugin>> {
+    resumed: bool,
     input: InputRuntime,
     main: MainRuntime,
     render: RenderRuntime<R>,
@@ -16,6 +17,7 @@ pub struct Engine<R: Renderer, G: Game<Plugins: Plugin>> {
 impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
     pub fn new(renderer: R, game: G) -> Self {
         Self {
+            resumed: false,
             input: InputRuntime::new(),
             main: MainRuntime::new(),
             render: RenderRuntime::new(renderer),
@@ -65,16 +67,18 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
     }
 
     fn stop<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), RuntimeError> {
+        self.resumed = false;
+        self.input.reset();
         let simulation_error = self.simulation.stop();
 
         self.render.stop();
-        self.windows.destroy_all(self.main.registry_mut(), handle)?;
+        let windows_result = self.windows.destroy_all(self.main.registry_mut(), handle);
 
         if let Some(error) = simulation_error {
             return Err(error);
         }
 
-        Ok(())
+        windows_result
     }
 }
 
@@ -82,18 +86,30 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> BackendApplication for Engine<R, G> 
     type Error = RuntimeError;
 
     fn started<H: BackendHandle>(&mut self, handle: &mut H) -> Result<(), Self::Error> {
-        self.start(handle)
+        if let Err(error) = self.start(handle) {
+            let _ = self.stop(handle);
+            return Err(error);
+        }
+
+        Ok(())
     }
 
     fn resumed<H: BackendHandle>(&mut self, _handle: &mut H) -> Result<(), Self::Error> {
         self.main.resume();
         self.windows.resume_surfaces(self.render.renderer_mut())?;
+
+        if let Some(window) = self.windows.focused_window(self.main.registry()) {
+            self.input.focus(window, true);
+        }
+
         self.simulation.resume();
+        self.resumed = true;
 
         Ok(())
     }
 
     fn suspended<H: BackendHandle>(&mut self, _handle: &mut H) -> Result<(), Self::Error> {
+        self.resumed = false;
         self.input.reset();
         self.main.suspend();
         self.simulation.suspend();
@@ -104,6 +120,10 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> BackendApplication for Engine<R, G> 
     }
 
     fn update<H: BackendHandle>(&mut self, _handle: &mut H) -> Result<(), Self::Error> {
+        if !self.resumed {
+            return Ok(());
+        }
+
         let result = self.tick();
         self.input.clear_transient();
 
@@ -111,26 +131,31 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> BackendApplication for Engine<R, G> 
     }
 
     fn input_event(&mut self, event: InputEvent) {
-        self.input.update(event);
+        if self.resumed {
+            self.input.update(event);
+        }
     }
 
     fn window_event<H: BackendHandle>(&mut self, handle: &mut H, event: WindowEvent)
         -> Result<(), Self::Error>
     {
         if let WindowEventKind::CloseRequested = event.kind {
+            self.input.focus(event.window_id, false);
             return self.windows.close_requested(self.main.registry_mut(), handle, event.window_id);
         }
 
         self.windows.synchronize(self.main.registry_mut(), event);
 
-        if let WindowEventKind::Focused { focused: false } = event.kind {
-            self.input.release_all();
+        if !self.resumed {
+            return Ok(());
+        }
+
+        if let WindowEventKind::Focused { focused } = event.kind {
+            self.input.focus(event.window_id, focused);
         }
 
         if let WindowEventKind::Resized { width, height } = event.kind {
-            if let Some(surface) = self.windows.surface_mut(event.window_id) {
-                self.render.resize_surface(surface, (width, height))?;
-            }
+            self.windows.resize_surface(self.render.renderer_mut(), event.window_id, (width, height))?;
         }
 
         if let WindowEventKind::RedrawRequested = event.kind {

@@ -1,4 +1,10 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
+
+#[cfg(not(target_family = "wasm"))]
+use std::time::Instant;
+
+#[cfg(target_family = "wasm")]
+use web_time::Instant;
 
 #[derive(Debug, Clone, Copy)]
 pub struct FrameTime {

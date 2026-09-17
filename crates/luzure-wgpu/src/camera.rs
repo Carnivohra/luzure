@@ -1,6 +1,7 @@
 mod uniform;
 
 use uniform::CameraUniform;
+use crate::buffer::buffer_capacity;
 
 use bytemuck::bytes_of;
 use luzure_render::{MeshPipelineContract, RenderView, render::RenderError};
@@ -52,29 +53,30 @@ impl WgpuCamera {
     pub(crate) fn update(&mut self, device: &Device, queue: &Queue, bind_group_layout: &BindGroupLayout, views: &[RenderView])
         -> Result<(), RenderError>
     {
+        if views.is_empty() {
+            return Ok(());
+        }
+
         if views.len() > self.capacity {
-            self.capacity = views.len().checked_next_power_of_two()
-                .ok_or(RenderError::ViewCapacityExceeded)?;
-            let size = self.stride.checked_mul(self.capacity)
-                .and_then(|size| u64::try_from(size).ok())
+            let limit = device.limits().max_buffer_size.min(u64::from(u32::MAX) + self.stride as u64);
+            let (capacity, size) = buffer_capacity(views.len(), self.stride, limit)
                 .ok_or(RenderError::ViewCapacityExceeded)?;
 
             self.buffer = Self::create_buffer(device, size);
             self.bind_group = Self::create_bind_group(device, bind_group_layout, &self.buffer);
             self.staging.resize(size as usize, 0);
+            self.capacity = capacity;
         }
 
         for (index, view) in views.iter().enumerate() {
-            let offset = index.checked_mul(self.stride)
-                .ok_or(RenderError::ViewCapacityExceeded)?;
+            let offset = index * self.stride;
             let uniform = CameraUniform::new(view.camera_matrices());
             let bytes = bytes_of(&uniform);
 
             self.staging[offset..offset + bytes.len()].copy_from_slice(bytes);
         }
 
-        let size = views.len().checked_mul(self.stride)
-            .ok_or(RenderError::ViewCapacityExceeded)?;
+        let size = views.len() * self.stride;
 
         queue.write_buffer(&self.buffer, 0, &self.staging[..size]);
 

@@ -11,12 +11,12 @@ pub(crate) struct WindowTarget<S> {
 }
 
 impl<S> WindowTarget<S> {
-    pub(crate) const fn new(entity: Entity, window: Window, surface: S, visible: bool, size: (u32, u32)) -> Self {
+    pub(crate) const fn new(entity: Entity, window: Window, surface: Option<S>, visible: bool, size: (u32, u32)) -> Self {
         Self {
             entity,
             has_size: size.0 > 0 && size.1 > 0,
             occluded: false,
-            surface: Some(surface),
+            surface,
             visible,
             window,
         }

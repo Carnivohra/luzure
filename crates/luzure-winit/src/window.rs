@@ -1,6 +1,7 @@
 mod entry;
+mod registry;
 
-pub(crate) use entry::WinitWindowEntry;
+pub(crate) use registry::WinitWindowRegistry;
 
 use luzure_backend::window::WindowSource;
 use raw_window_handle::{DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, WindowHandle};

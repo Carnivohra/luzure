@@ -47,12 +47,6 @@ impl<R: Renderer> RenderRuntime<R> {
         Ok(())
     }
 
-    pub(crate) fn resize_surface(&mut self, surface: &mut R::Surface, size: (u32, u32))
-        -> Result<(), RenderError>
-    {
-        self.renderer.resize_surface(surface, size)
-    }
-
     pub(crate) fn render(&mut self, surface: &mut R::Surface, target: RenderTarget)
         -> Result<(), RenderError>
     {
@@ -63,10 +57,6 @@ impl<R: Renderer> RenderRuntime<R> {
         let target = target.value();
         let first = self.views.partition_point(|view| view.target().value() < target);
         let count = self.views[first..].partition_point(|view| view.target().value() == target);
-
-        if count == 0 {
-            return Ok(());
-        }
 
         let scene = scenes.current();
         let frame = scene.frame(&self.views[first..first + count]);

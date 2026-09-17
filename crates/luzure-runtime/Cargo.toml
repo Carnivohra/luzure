@@ -14,8 +14,12 @@ luzure-backend.workspace = true
 luzure-ecs.workspace = true
 luzure-game.workspace = true
 luzure-input.workspace = true
+luzure-math.workspace = true
 luzure-render.workspace = true
 luzure-thread.workspace = true
 luzure-world.workspace = true
 
 thiserror.workspace = true
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+web-time.workspace = true

@@ -13,7 +13,7 @@ pub mod window;
 
 pub use engine::Engine;
 pub use frame::FrameTime;
-pub use main::{MainContext, MainSystem};
+pub use main::{Camera, MainContext, MainSystem};
 pub use plugin::{Plugin, PluginContext};
 pub use render::CameraView;
 pub use simulation::ThreadMode;

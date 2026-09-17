@@ -19,7 +19,13 @@ impl WindowPlan {
     }
 
     pub(crate) fn destroy(&mut self, window: Entity) {
-        self.destroys.push(window);
+        if !self.destroys.contains(&window) {
+            self.destroys.push(window);
+        }
+    }
+
+    pub(crate) fn contains(&self, window: Entity) -> bool {
+        self.creates.iter().any(|(entity, _)| *entity == window)
     }
 
     pub(crate) fn creates(&mut self) -> impl Iterator<Item = (Entity, WindowDescriptor)> + '_ {

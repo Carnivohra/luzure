@@ -31,18 +31,21 @@ impl EntityAllocator {
             return false;
         };
 
-        if *generation != entity.generation {
+        if *generation != entity.generation || *generation == u32::MAX {
             return false;
         }
 
-        *generation = generation.wrapping_add(1);
-        self.free_indices.push(entity.index);
+        *generation += 1;
+
+        if *generation != u32::MAX {
+            self.free_indices.push(entity.index);
+        }
 
         true
     }
 
     pub(crate) fn contains(&self, entity: Entity) -> bool {
         self.generations.get(entity.index as usize)
-            .is_some_and(|generation| *generation == entity.generation)
+            .is_some_and(|generation| *generation == entity.generation && *generation != u32::MAX)
     }
 }

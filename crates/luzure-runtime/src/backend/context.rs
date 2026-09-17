@@ -1,7 +1,7 @@
 use luzure_backend::{backend::BackendError, window::WindowDescriptor};
 use luzure_ecs::{Entity, Registry};
 
-use crate::{runtime::RuntimeError, window::{PrimaryWindow, WindowPlan}};
+use crate::{runtime::RuntimeError, window::{PrimaryWindow, WindowPlan, WindowState}};
 
 pub struct BackendContext<'a> {
     runtime_registry: &'a mut Registry,
@@ -25,7 +25,7 @@ impl<'a> BackendContext<'a> {
     }
 
     pub fn destroy_window(&mut self, window: Entity) -> Result<(), RuntimeError> {
-        if !self.runtime_registry.contains(window) {
+        if !self.contains_window(window) {
             return Err(BackendError::InvalidWindow.into());
         }
 
@@ -35,7 +35,7 @@ impl<'a> BackendContext<'a> {
     }
 
     pub fn set_primary_window(&mut self, window: Entity) -> Result<(), RuntimeError> {
-        if !self.runtime_registry.contains(window) {
+        if !self.contains_window(window) {
             return Err(BackendError::InvalidWindow.into());
         }
 
@@ -54,5 +54,10 @@ impl<'a> BackendContext<'a> {
         let _ = self.runtime_registry.insert(window, PrimaryWindow)?;
 
         Ok(())
+    }
+
+    fn contains_window(&self, window: Entity) -> bool {
+        self.runtime_registry.contains(window)
+            && (self.window_plan.contains(window) || self.runtime_registry.contains_component::<WindowState>(window))
     }
 }

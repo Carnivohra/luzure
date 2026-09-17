@@ -1,3 +1,4 @@
+mod buffer;
 mod camera;
 mod instance;
 mod mesh;

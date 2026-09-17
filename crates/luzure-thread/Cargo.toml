@@ -10,3 +10,6 @@ repository.workspace = true
 
 [dependencies]
 thiserror.workspace = true
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+web-time.workspace = true

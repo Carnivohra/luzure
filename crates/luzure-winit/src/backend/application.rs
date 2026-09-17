@@ -1,11 +1,11 @@
 use luzure_backend::{backend::BackendApplication, window::{WindowEvent, WindowEventKind}};
 use winit::{application::ApplicationHandler, event::{DeviceEvent, DeviceId, WindowEvent as WinitWindowEvent}, event_loop::ActiveEventLoop, window::WindowId as WinitWindowId};
 
-use crate::{backend::WinitBackendHandle, input, window::WinitWindowEntry};
+use crate::{backend::WinitBackendHandle, input, window::WinitWindowRegistry};
 
 pub(super) struct WinitApplication<A: BackendApplication> {
     application: A,
-    windows: Vec<Option<WinitWindowEntry>>,
+    windows: WinitWindowRegistry,
     started: bool,
     resumed: bool,
     error: Option<A::Error>,
@@ -15,7 +15,7 @@ impl<A: BackendApplication> WinitApplication<A> {
     pub(super) fn new(application: A) -> Self {
         Self {
             application,
-            windows: vec![],
+            windows: WinitWindowRegistry::new(),
             started: false,
             resumed: false,
             error: None,
@@ -30,6 +30,10 @@ impl<A: BackendApplication> WinitApplication<A> {
 
 impl<A: BackendApplication> ApplicationHandler for WinitApplication<A> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        if self.resumed || self.error.is_some() || event_loop.exiting() {
+            return;
+        }
+
         let mut handle = WinitBackendHandle::new(event_loop, &mut self.windows);
 
         if !self.started {
@@ -41,6 +45,10 @@ impl<A: BackendApplication> ApplicationHandler for WinitApplication<A> {
             self.started = true;
         }
 
+        if event_loop.exiting() {
+            return;
+        }
+
         if let Err(error) = self.application.resumed(&mut handle) {
             self.error = Some(error);
             return event_loop.exit();
@@ -50,23 +58,35 @@ impl<A: BackendApplication> ApplicationHandler for WinitApplication<A> {
     }
 
     fn suspended(&mut self, event_loop: &ActiveEventLoop) {
+        if !self.resumed {
+            return;
+        }
+
         self.resumed = false;
         let mut handle = WinitBackendHandle::new(event_loop, &mut self.windows);
 
         if let Err(error) = self.application.suspended(&mut handle) {
-            self.error = Some(error);
+            if self.error.is_none() {
+                self.error = Some(error);
+            }
+
             event_loop.exit();
         }
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, winit_window_id: WinitWindowId, winit_event: WinitWindowEvent) {
-        let Some(window_id) = self.windows.iter()
-            .flatten()
-            .find(|window| window.winit_id() == winit_window_id)
-            .map(WinitWindowEntry::window_id) else { return };
+        if self.error.is_some() || event_loop.exiting() {
+            return;
+        }
+
+        let Some(window_id) = self.windows.window_id(winit_window_id) else { return };
 
         if let Some(event) = input::window_event(window_id, &winit_event) {
-            return self.application.input_event(event);
+            if self.resumed {
+                self.application.input_event(event);
+            }
+
+            return;
         }
 
         let kind = match winit_event {
@@ -88,14 +108,18 @@ impl<A: BackendApplication> ApplicationHandler for WinitApplication<A> {
         }
     }
 
-    fn device_event(&mut self, _event_loop: &ActiveEventLoop, _device_id: DeviceId, winit_event: DeviceEvent) {
+    fn device_event(&mut self, event_loop: &ActiveEventLoop, _device_id: DeviceId, winit_event: DeviceEvent) {
+        if !self.resumed || self.error.is_some() || event_loop.exiting() {
+            return;
+        }
+
         if let Some(event) = input::device_event(&winit_event) {
             self.application.input_event(event);
         }
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        if !self.resumed {
+        if !self.resumed || self.error.is_some() || event_loop.exiting() {
             return;
         }
 
@@ -108,19 +132,24 @@ impl<A: BackendApplication> ApplicationHandler for WinitApplication<A> {
     }
 
     fn exiting(&mut self, event_loop: &ActiveEventLoop) {
-        if !self.started {
-            return;
-        }
-
-        self.started = false;
         self.resumed = false;
 
-        let mut handle = WinitBackendHandle::new(event_loop, &mut self.windows);
+        if self.started {
+            self.started = false;
+            let mut handle = WinitBackendHandle::new(event_loop, &mut self.windows);
 
-        if let Err(error) = self.application.stopped(&mut handle) {
-            if self.error.is_none() {
-                self.error = Some(error);
+            if let Err(error) = self.application.stopped(&mut handle) {
+                if self.error.is_none() {
+                    self.error = Some(error);
+                }
             }
+        }
+
+        self.windows.clear();
+
+        #[cfg(target_family = "wasm")]
+        if let Some(error) = self.error.take() {
+            web_sys::console::error_1(&error.to_string().into());
         }
     }
 }

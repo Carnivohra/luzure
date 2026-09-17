@@ -8,7 +8,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum ThreadError {
-    #[error("thread tick rate must be greater than zero")]
+    #[error("thread tick rate must produce a nonzero tick interval")]
     InvalidTickRate,
 
     #[error("threaded execution is not supported on this platform")]

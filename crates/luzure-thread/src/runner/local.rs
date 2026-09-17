@@ -1,6 +1,12 @@
-use std::{num::NonZeroU32, time::{Duration, Instant}};
+use std::time::Duration;
 
-use crate::{ThreadError, ThreadTask};
+#[cfg(not(target_family = "wasm"))]
+use std::time::Instant;
+
+#[cfg(target_family = "wasm")]
+use web_time::Instant;
+
+use crate::{ThreadError, ThreadTask, thread::{MAX_CATCH_UP_TICKS, tick_interval}};
 
 pub(super) struct LocalTask<T: ThreadTask> {
     accumulator: Duration,
@@ -14,12 +20,8 @@ pub(super) struct LocalTask<T: ThreadTask> {
 }
 
 impl<T: ThreadTask> LocalTask<T> {
-    const MAX_CATCH_UP_TICKS: u32 = 4;
-
     pub(super) fn start(mut task: T, tick_rate: u32) -> Result<Self, ThreadError> {
-        let tick_rate = NonZeroU32::new(tick_rate)
-            .ok_or(ThreadError::InvalidTickRate)?;
-        let tick_interval = Self::tick_interval(tick_rate.get())?;
+        let tick_interval = tick_interval(tick_rate)?;
         let error = task.start().err();
         let running = error.is_none();
 
@@ -31,7 +33,7 @@ impl<T: ThreadTask> LocalTask<T> {
             running,
             task,
             tick_interval,
-            tick_rate: tick_rate.get(),
+            tick_rate,
         })
     }
 
@@ -46,7 +48,7 @@ impl<T: ThreadTask> LocalTask<T> {
 
         let now = Instant::now();
         let elapsed = now.saturating_duration_since(self.last_update);
-        let maximum_elapsed = self.tick_interval.saturating_mul(Self::MAX_CATCH_UP_TICKS);
+        let maximum_elapsed = self.tick_interval.saturating_mul(MAX_CATCH_UP_TICKS);
 
         self.last_update = now;
         self.accumulator = self.accumulator.saturating_add(elapsed.min(maximum_elapsed));
@@ -68,11 +70,12 @@ impl<T: ThreadTask> LocalTask<T> {
     }
 
     pub(super) fn set_tick_rate(&mut self, tick_rate: u32) -> Result<(), ThreadError> {
-        let tick_rate = NonZeroU32::new(tick_rate)
-            .ok_or(ThreadError::InvalidTickRate)?;
+        if self.tick_rate == tick_rate {
+            return Ok(());
+        }
 
-        self.tick_interval = Self::tick_interval(tick_rate.get())?;
-        self.tick_rate = tick_rate.get();
+        self.tick_interval = tick_interval(tick_rate)?;
+        self.tick_rate = tick_rate;
         self.accumulator = Duration::ZERO;
         self.last_update = Instant::now();
 
@@ -95,15 +98,5 @@ impl<T: ThreadTask> LocalTask<T> {
 
     pub(super) fn stop(self) -> (T, Option<T::Error>) {
         (self.task, self.error)
-    }
-
-    fn tick_interval(tick_rate: u32) -> Result<Duration, ThreadError> {
-        let tick_interval = Duration::from_secs_f64(1.0 / f64::from(tick_rate));
-
-        if tick_interval.is_zero() {
-            return Err(ThreadError::InvalidTickRate);
-        }
-
-        Ok(tick_interval)
     }
 }

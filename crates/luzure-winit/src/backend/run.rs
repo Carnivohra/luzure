@@ -7,6 +7,9 @@ mod desktop;
 #[cfg(target_os = "ios")]
 mod ios;
 
+#[cfg(not(target_family = "wasm"))]
+mod native;
+
 #[cfg(target_family = "wasm")]
 mod web;
 

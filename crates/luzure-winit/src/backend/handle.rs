@@ -4,17 +4,17 @@ use winit::{dpi::PhysicalSize, event_loop::ActiveEventLoop, window::WindowAttrib
 #[cfg(target_family = "wasm")]
 use winit::platform::web::WindowAttributesExtWebSys;
 
-use crate::window::{WinitWindow, WinitWindowEntry};
+use crate::window::{WinitWindow, WinitWindowRegistry};
 
 use std::rc::Rc;
 
 pub(super) struct WinitBackendHandle<'a> {
     event_loop: &'a ActiveEventLoop,
-    windows: &'a mut Vec<Option<WinitWindowEntry>>,
+    windows: &'a mut WinitWindowRegistry,
 }
 
 impl<'a> WinitBackendHandle<'a> {
-    pub(super) fn new(event_loop: &'a ActiveEventLoop, windows: &'a mut Vec<Option<WinitWindowEntry>>) -> Self {
+    pub(super) fn new(event_loop: &'a ActiveEventLoop, windows: &'a mut WinitWindowRegistry) -> Self {
         Self {
             event_loop,
             windows,
@@ -37,27 +37,13 @@ impl BackendHandle for WinitBackendHandle<'_> {
             .map_err(|_| BackendError::WindowCreation)?;
 
         let winit_window = Rc::new(WinitWindow::new(window));
-        let window_id = WindowId::new(self.windows.len() as u64);
-
-        self.windows.push(Some(WinitWindowEntry::new(window_id, Rc::clone(&winit_window))));
+        let window_id = self.windows.insert(Rc::clone(&winit_window))?;
 
         Ok(Window::new(window_id, winit_window))
     }
 
     fn destroy_window(&mut self, window_id: WindowId) -> Result<(), BackendError> {
-        let index = usize::try_from(window_id.value())
-            .map_err(|_| BackendError::InvalidWindow)?;
-
-        let window = self.windows.get_mut(index)
-            .ok_or(BackendError::InvalidWindow)?;
-
-        if window.as_ref().is_none_or(|window| window.window_id() != window_id) {
-            return Err(BackendError::InvalidWindow);
-        }
-
-        window.take();
-
-        Ok(())
+        self.windows.remove(window_id)
     }
 
     fn exit(&mut self) -> Result<(), BackendError> {

@@ -32,12 +32,6 @@ impl RenderSceneBufferState {
             return None;
         }
 
-        self.value.compare_exchange(
-            state,
-            scene,
-            Ordering::AcqRel,
-            Ordering::Acquire,
-        ).ok()
-            .map(|state| state & Self::INDEX_MASK)
+        Some(self.value.swap(scene, Ordering::AcqRel) & Self::INDEX_MASK)
     }
 }

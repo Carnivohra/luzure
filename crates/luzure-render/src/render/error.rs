@@ -8,10 +8,10 @@ pub enum RenderError {
     #[error("failed to create graphics device")]
     DeviceRequest,
 
-    #[error("render surface dimensions must be greater than zero")]
+    #[error("render surface dimensions must be nonzero and within device limits")]
     InvalidSurfaceSize,
 
-    #[error("render mesh must contain vertices and indices")]
+    #[error("render mesh must contain vertices and valid triangle indices")]
     InvalidMesh,
 
     #[error("render mesh handle is invalid")]

@@ -1,4 +1,5 @@
 use luzure_render::{MeshInstance, render::RenderError};
+use crate::buffer::buffer_capacity;
 
 use std::{mem::{size_of, size_of_val}, slice};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, Device, Queue};
@@ -24,13 +25,11 @@ impl WgpuInstances {
         }
 
         if instances.len() > self.capacity {
-            self.capacity = instances.len().checked_next_power_of_two()
-                .ok_or(RenderError::InstanceCapacityExceeded)?;
-            let size = u64::try_from(self.capacity).ok()
-                .and_then(|capacity| capacity.checked_mul(size_of::<MeshInstance>() as u64))
+            let (capacity, size) = buffer_capacity(instances.len(), size_of::<MeshInstance>(), device.limits().max_buffer_size)
                 .ok_or(RenderError::InstanceCapacityExceeded)?;
 
             self.buffer = Self::create_buffer(device, size);
+            self.capacity = capacity;
         }
 
         queue.write_buffer(&self.buffer, 0, Self::bytes(instances));

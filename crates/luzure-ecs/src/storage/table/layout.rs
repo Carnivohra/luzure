@@ -1,8 +1,16 @@
 use crate::component::ComponentId;
 
+use std::borrow::Borrow;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct ArchetypeLayout {
     component_ids: Box<[ComponentId]>,
+}
+
+impl Borrow<[ComponentId]> for ArchetypeLayout {
+    fn borrow(&self) -> &[ComponentId] {
+        self.component_ids()
+    }
 }
 
 impl ArchetypeLayout {
