@@ -1,3 +1,3 @@
 mod asset;
 
-pub use asset::{AssetHandle, AssetId, AssetStorage};
+pub use asset::{AssetError, AssetHandle, AssetId, AssetPath, AssetPathError, AssetReadError, AssetReader, AssetState, AssetStorage, MemoryAssetReader};

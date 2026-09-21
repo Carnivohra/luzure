@@ -1,5 +1,8 @@
 # Luzure
 
+[![Crates.io](https://img.shields.io/crates/v/luzure.svg)](https://crates.io/crates/luzure)
+[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/mnjVmezgtj)
+
 Luzure is a lightweight game engine written in Rust, with a strong
 focus on performance, modularity, and minimal overhead.
 

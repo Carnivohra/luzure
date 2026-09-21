@@ -33,8 +33,7 @@ impl<T: ThreadTask> Thread<T> {
 
         let handle = thread::Builder::new()
             .name(name.to_owned())
-            .spawn(move || Self::run(task, thread_state))
-            .map_err(ThreadError::Spawn)?;
+            .spawn(move || Self::run(task, thread_state))?;
 
         Ok(Self {
             state,

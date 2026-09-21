@@ -15,7 +15,7 @@ pub enum ThreadError {
     UnsupportedPlatform,
 
     #[error("failed to spawn thread")]
-    Spawn(#[source] std::io::Error),
+    Spawn(#[from] std::io::Error),
 
     #[error("thread panicked")]
     Panic,
