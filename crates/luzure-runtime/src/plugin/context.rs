@@ -4,7 +4,8 @@ use luzure_game::GameMetadata;
 use crate::backend::BackendContext;
 use crate::main::{MainContext, MainSchedule};
 use crate::render::{RenderContext, RenderExtraction, RenderPlan};
-use crate::simulation::{Simulation, SimulationContext, SimulationPlan};
+use crate::runtime::RuntimePlan;
+use crate::simulation::{Simulation, SimulationContext};
 use crate::window::WindowPlan;
 
 pub struct PluginContext<'a> {
@@ -13,13 +14,13 @@ pub struct PluginContext<'a> {
     metadata: GameMetadata,
     render_extraction: &'a mut RenderExtraction,
     render_plan: &'a mut RenderPlan,
+    runtime_plan: &'a mut RuntimePlan,
     simulation: &'a mut Simulation,
-    simulation_plan: &'a mut SimulationPlan,
     window_plan: &'a mut WindowPlan,
 }
 
 impl<'a> PluginContext<'a> {
-    pub(crate) const fn new(metadata: GameMetadata, main_registry: &'a mut Registry, main_schedule: &'a mut MainSchedule, window_plan: &'a mut WindowPlan, render_plan: &'a mut RenderPlan, render_extraction: &'a mut RenderExtraction, simulation: &'a mut Simulation, simulation_plan: &'a mut SimulationPlan)
+    pub(crate) const fn new(metadata: GameMetadata, main_registry: &'a mut Registry, main_schedule: &'a mut MainSchedule, window_plan: &'a mut WindowPlan, render_plan: &'a mut RenderPlan, render_extraction: &'a mut RenderExtraction, runtime_plan: &'a mut RuntimePlan, simulation: &'a mut Simulation)
         -> Self
     {
         Self {
@@ -28,8 +29,8 @@ impl<'a> PluginContext<'a> {
             metadata,
             render_extraction,
             render_plan,
+            runtime_plan,
             simulation,
-            simulation_plan,
             window_plan,
         }
     }
@@ -43,11 +44,11 @@ impl<'a> PluginContext<'a> {
     }
 
     pub fn render(&mut self) -> RenderContext<'_> {
-        RenderContext::new(self.render_plan, self.render_extraction)
+        RenderContext::new(self.render_plan, self.render_extraction, self.runtime_plan)
     }
 
     pub fn simulation(&mut self) -> SimulationContext<'_> {
-        SimulationContext::new(self.simulation, self.simulation_plan)
+        SimulationContext::new(self.simulation, self.runtime_plan)
     }
 
     pub const fn metadata(&self) -> GameMetadata {

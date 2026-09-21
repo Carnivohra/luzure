@@ -5,6 +5,7 @@ mod extraction;
 mod plan;
 mod runtime;
 mod target;
+mod transfer;
 mod view;
 
 pub(crate) use exchange::{RenderSceneConsumer, RenderSceneProducer, render_scene_buffer};
@@ -15,4 +16,5 @@ pub(crate) use runtime::RenderRuntime;
 pub(crate) use target::render_target;
 pub use context::RenderContext;
 pub use extraction::RenderExtractSystem;
+pub use transfer::RenderSceneTransfer;
 pub use view::CameraView;

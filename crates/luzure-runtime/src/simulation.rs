@@ -1,11 +1,9 @@
 mod context;
-mod plan;
 mod runtime;
 mod task;
 
 pub use context::SimulationContext;
 pub use luzure_thread::ThreadMode;
-pub(crate) use plan::SimulationPlan;
 pub(crate) use runtime::SimulationRuntime;
 pub(crate) use task::SimulationTask;
 

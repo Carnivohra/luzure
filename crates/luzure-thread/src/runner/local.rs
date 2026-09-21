@@ -69,6 +69,10 @@ impl<T: ThreadTask> LocalTask<T> {
         self.tick_rate
     }
 
+    pub(super) const fn task(&self) -> &T {
+        &self.task
+    }
+
     pub(super) fn set_tick_rate(&mut self, tick_rate: u32) -> Result<(), ThreadError> {
         if self.tick_rate == tick_rate {
             return Ok(());

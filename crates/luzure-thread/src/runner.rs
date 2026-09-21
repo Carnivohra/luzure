@@ -45,6 +45,15 @@ impl<T: ThreadTask> TaskRunner<T> {
         }
     }
 
+    pub fn main_thread_task(&self) -> Option<&T> {
+        match &self.state {
+            TaskRunnerState::MainThread(task) => Some(task.task()),
+
+            #[cfg(not(target_family = "wasm"))]
+            TaskRunnerState::Threaded(_) => None,
+        }
+    }
+
     pub fn set_tick_rate(&mut self, tick_rate: u32) -> Result<(), ThreadError> {
         match &mut self.state {
             TaskRunnerState::MainThread(task) => task.set_tick_rate(tick_rate),

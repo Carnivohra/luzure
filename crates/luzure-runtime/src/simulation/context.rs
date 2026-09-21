@@ -1,32 +1,37 @@
 use luzure_ecs::{Bundle, Entity, StartupSystem, System};
 use luzure_thread::{ThreadError, ThreadMode};
 
-use super::{Simulation, SimulationPlan};
+use crate::runtime::RuntimePlan;
+
+use super::Simulation;
 
 pub struct SimulationContext<'a> {
-    plan: &'a mut SimulationPlan,
+    runtime_plan: &'a mut RuntimePlan,
     simulation: &'a mut Simulation,
 }
 
 impl<'a> SimulationContext<'a> {
-    pub(crate) const fn new(simulation: &'a mut Simulation, plan: &'a mut SimulationPlan) -> Self {
-        Self { plan, simulation }
+    pub(crate) const fn new(simulation: &'a mut Simulation, runtime_plan: &'a mut RuntimePlan) -> Self {
+        Self {
+            runtime_plan,
+            simulation,
+        }
     }
 
     pub const fn thread_mode(&self) -> ThreadMode {
-        self.plan.thread_mode()
+        self.runtime_plan.simulation_thread_mode()
     }
 
     pub const fn set_thread_mode(&mut self, thread_mode: ThreadMode) {
-        self.plan.set_thread_mode(thread_mode);
+        self.runtime_plan.set_simulation_thread_mode(thread_mode);
     }
 
     pub const fn tick_rate(&self) -> u32 {
-        self.plan.tick_rate()
+        self.runtime_plan.simulation_tick_rate()
     }
 
     pub fn set_tick_rate(&mut self, tick_rate: u32) -> Result<(), ThreadError> {
-        self.plan.set_tick_rate(tick_rate)
+        self.runtime_plan.set_simulation_tick_rate(tick_rate)
     }
 
     pub fn insert_resource<T: Send + Sync + 'static>(&mut self, resource: T) -> Option<T> {

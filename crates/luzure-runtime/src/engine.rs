@@ -2,13 +2,14 @@ use luzure_backend::{backend::{BackendApplication, BackendHandle}, input::InputE
 use luzure_game::Game;
 use luzure_render::Renderer;
 
-use crate::{input::InputRuntime, main::MainRuntime, plugin::{Plugin, PluginContext}, render::{RenderExtraction, RenderRuntime}, runtime::RuntimeError, simulation::{Simulation, SimulationRuntime, SimulationTask}, window::WindowManager};
+use crate::{input::InputRuntime, main::MainRuntime, plugin::{Plugin, PluginContext}, render::{RenderExtraction, RenderRuntime}, runtime::{RuntimeError, RuntimePlan}, simulation::{Simulation, SimulationRuntime}, window::WindowManager};
 
 pub struct Engine<R: Renderer, G: Game<Plugins: Plugin>> {
     resumed: bool,
     input: InputRuntime,
     main: MainRuntime,
     render: RenderRuntime<R>,
+    runtime_plan: RuntimePlan,
     simulation: SimulationRuntime,
     game: G,
     windows: WindowManager<R::Surface>,
@@ -21,6 +22,7 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
             input: InputRuntime::new(),
             main: MainRuntime::new(),
             render: RenderRuntime::new(renderer),
+            runtime_plan: RuntimePlan::new(),
             simulation: SimulationRuntime::new(),
             game,
             windows: WindowManager::new(),
@@ -40,8 +42,8 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
             self.windows.plan_mut(),
             self.render.plan_mut(),
             &mut render_extraction,
+            &mut self.runtime_plan,
             &mut simulation,
-            self.simulation.plan_mut(),
         );
 
         plugins.build(&mut context)?;
@@ -49,10 +51,7 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> Engine<R, G> {
 
         self.windows.apply(self.main.registry_mut(), self.render.renderer_mut(), handle)?;
 
-        let render_scene_producer = self.render.start();
-        let simulation_task = SimulationTask::new(simulation, render_extraction, render_scene_producer);
-
-        self.simulation.start(simulation_task)?;
+        self.simulation.start(simulation, render_extraction, &self.runtime_plan)?;
 
         Ok(())
     }
@@ -159,8 +158,10 @@ impl<R: Renderer, G: Game<Plugins: Plugin>> BackendApplication for Engine<R, G> 
         }
 
         if let WindowEventKind::RedrawRequested = event.kind {
-            if let Some((target, surface)) = self.windows.render_target_mut(event.window_id) {
-                self.render.render(surface, target)?;
+            if let Some(scene) = self.simulation.render_scene() {
+                if let Some((target, surface)) = self.windows.render_target_mut(event.window_id) {
+                    self.render.render(surface, target, scene)?;
+                }
             }
         }
 

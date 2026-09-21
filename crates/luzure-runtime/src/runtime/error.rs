@@ -17,4 +17,7 @@ pub enum RuntimeError {
 
     #[error(transparent)]
     Thread(#[from] ThreadError),
+
+    #[error("render scene transfer is incompatible with the simulation thread mode")]
+    IncompatibleRenderSceneTransfer,
 }

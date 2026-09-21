@@ -15,6 +15,6 @@ pub use engine::Engine;
 pub use frame::FrameTime;
 pub use main::{Camera, MainContext, MainSystem};
 pub use plugin::{Plugin, PluginContext};
-pub use render::CameraView;
+pub use render::{CameraView, RenderSceneTransfer};
 pub use simulation::ThreadMode;
 pub use window::{PrimaryWindow, WindowState};
