@@ -2,7 +2,7 @@ mod slot;
 
 use std::num::NonZeroU32;
 
-use super::{AssetHandle, AssetId};
+use crate::{AssetHandle, AssetId};
 use slot::AssetSlot;
 
 pub struct AssetStorage<T> {

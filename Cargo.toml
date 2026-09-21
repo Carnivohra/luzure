@@ -18,7 +18,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.3"
+version = "0.0.4"
 edition = "2024"
 authors = ["Carnivohra <carnivohra@gmail.com>"]
 description = "A lightweight and modular game engine focused on performance."
@@ -27,20 +27,20 @@ readme = "README.md"
 repository = "https://github.com/Carnivohra/luzure"
 
 [workspace.dependencies]
-luzure = { path = "crates/luzure", version = "0.0.3" }
-luzure-app = { path = "crates/luzure-app", version = "0.0.3" }
-luzure-assets = { path = "crates/luzure-assets", version = "0.0.3" }
-luzure-backend = { path = "crates/luzure-backend", version = "0.0.3" }
-luzure-ecs = { path = "crates/luzure-ecs", version = "0.0.3" }
-luzure-game = { path = "crates/luzure-game", version = "0.0.3" }
-luzure-input = { path = "crates/luzure-input", version = "0.0.3" }
-luzure-math = { path = "crates/luzure-math", version = "0.0.3" }
-luzure-render = { path = "crates/luzure-render", version = "0.0.3" }
-luzure-runtime = { path = "crates/luzure-runtime", version = "0.0.3" }
-luzure-thread = { path = "crates/luzure-thread", version = "0.0.3" }
-luzure-wgpu = { path = "crates/luzure-wgpu", version = "0.0.3" }
-luzure-winit = { path = "crates/luzure-winit", version = "0.0.3" }
-luzure-world = { path = "crates/luzure-world", version = "0.0.3" }
+luzure = { path = "crates/luzure", version = "0.0.4" }
+luzure-app = { path = "crates/luzure-app", version = "0.0.4" }
+luzure-assets = { path = "crates/luzure-assets", version = "0.0.4" }
+luzure-backend = { path = "crates/luzure-backend", version = "0.0.4" }
+luzure-ecs = { path = "crates/luzure-ecs", version = "0.0.4" }
+luzure-game = { path = "crates/luzure-game", version = "0.0.4" }
+luzure-input = { path = "crates/luzure-input", version = "0.0.4" }
+luzure-math = { path = "crates/luzure-math", version = "0.0.4" }
+luzure-render = { path = "crates/luzure-render", version = "0.0.4" }
+luzure-runtime = { path = "crates/luzure-runtime", version = "0.0.4" }
+luzure-thread = { path = "crates/luzure-thread", version = "0.0.4" }
+luzure-wgpu = { path = "crates/luzure-wgpu", version = "0.0.4" }
+luzure-winit = { path = "crates/luzure-winit", version = "0.0.4" }
+luzure-world = { path = "crates/luzure-world", version = "0.0.4" }
 
 bytemuck = { version = "1.25.2", features = ["derive"] }
 raw-window-handle = { version = "0.6.2", features = ["alloc"] }

@@ -1,4 +1,4 @@
-use super::{AssetPath, AssetPathError};
+use crate::{AssetPath, AssetPathError};
 use thiserror::Error;
 
 #[derive(Clone, Debug, Eq, Error, PartialEq)]

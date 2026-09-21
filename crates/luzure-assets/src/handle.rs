@@ -1,6 +1,6 @@
 use std::{fmt, hash::{Hash, Hasher}, marker::PhantomData};
 
-use super::AssetId;
+use crate::AssetId;
 
 #[repr(transparent)]
 pub struct AssetHandle<T> {
