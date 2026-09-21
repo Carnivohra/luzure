@@ -694,9 +694,10 @@ checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 
 [[package]]
 name = "luzure"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "luzure-app",
+ "luzure-assets",
  "luzure-backend",
  "luzure-ecs",
  "luzure-game",
@@ -712,7 +713,7 @@ dependencies = [
 
 [[package]]
 name = "luzure-app"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "luzure-backend",
  "luzure-game",
@@ -723,8 +724,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "luzure-assets"
+version = "0.0.2"
+
+[[package]]
 name = "luzure-backend"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "luzure-input",
  "raw-window-handle",
@@ -733,26 +738,26 @@ dependencies = [
 
 [[package]]
 name = "luzure-ecs"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "thiserror 2.0.20",
 ]
 
 [[package]]
 name = "luzure-game"
-version = "0.0.1"
+version = "0.0.2"
 
 [[package]]
 name = "luzure-input"
-version = "0.0.1"
+version = "0.0.2"
 
 [[package]]
 name = "luzure-math"
-version = "0.0.1"
+version = "0.0.2"
 
 [[package]]
 name = "luzure-render"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "luzure-math",
  "raw-window-handle",
@@ -761,7 +766,7 @@ dependencies = [
 
 [[package]]
 name = "luzure-runtime"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "luzure-backend",
  "luzure-ecs",
@@ -777,7 +782,7 @@ dependencies = [
 
 [[package]]
 name = "luzure-thread"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "thiserror 2.0.20",
  "web-time",
@@ -785,7 +790,7 @@ dependencies = [
 
 [[package]]
 name = "luzure-wgpu"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "bytemuck",
  "luzure-render",
@@ -795,7 +800,7 @@ dependencies = [
 
 [[package]]
 name = "luzure-winit"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "luzure-backend",
  "luzure-input",
@@ -806,7 +811,7 @@ dependencies = [
 
 [[package]]
 name = "luzure-world"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "luzure-ecs",
  "luzure-math",

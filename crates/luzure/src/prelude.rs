@@ -1,4 +1,5 @@
 pub use luzure_app::App;
+pub use luzure_assets::{AssetHandle, AssetId, AssetStorage};
 pub use luzure_backend::{Backend, Window};
 pub use luzure_game::{Game, GameMetadata};
 pub use luzure_input::{input::InputState, keyboard::KeyboardKey, mouse::MouseButton};

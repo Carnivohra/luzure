@@ -15,6 +15,7 @@ winit = ["dep:luzure-winit", "luzure-app/winit"]
 
 [dependencies]
 luzure-app.workspace = true
+luzure-assets.workspace = true
 luzure-backend.workspace = true
 luzure-ecs.workspace = true
 luzure-game.workspace = true

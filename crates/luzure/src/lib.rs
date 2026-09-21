@@ -1,6 +1,7 @@
 pub mod prelude;
 
 pub use luzure_app as app;
+pub use luzure_assets as assets;
 pub use luzure_backend as backend;
 pub use luzure_ecs as ecs;
 pub use luzure_game as game;
